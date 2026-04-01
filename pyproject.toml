@@ -53,6 +53,11 @@ dependencies = [
     "websockets>=11.0.0",
 ]
 
+# Console scripts
+[project.scripts]
+server = "server.app:main"
+code-review-env-server = "server.app:main"
+
 # Optional dependencies
 [project.optional-dependencies]
 # For running the baseline inference

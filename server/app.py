@@ -152,18 +152,23 @@ def _count_issues_by_type(issues):
 # RUN SERVER LOCALLY (for development)
 # =============================================================================
 
-if __name__ == "__main__":
+def main() -> None:
+    """Entrypoint for running the server locally."""
     import uvicorn
-    
+
     # Run the server
     # This is only for local development!
     # In production, use Docker and the Dockerfile
     print("Starting CodeReviewEnv server...")
     print("API docs available at: http://localhost:8000/docs")
-    
+
     uvicorn.run(
         "app:app",
         host="0.0.0.0",
         port=8000,
         reload=True  # Auto-reload on code changes (dev only!)
     )
+
+
+if __name__ == "__main__":
+    main()

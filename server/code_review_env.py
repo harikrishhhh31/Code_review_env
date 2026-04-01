@@ -39,8 +39,8 @@ from models import (
 # Import rubrics for grading
 from rubric import RubricFactory, ReadabilityRubric, BugLogicRubric, FullReviewRubric
 
-# Import task data
-from tasks.task_data import get_task_by_id, get_random_task
+# Import task data (relative import to avoid module resolution issues)
+from .tasks.task_data import get_task_by_id, get_random_task
 
 
 # =============================================================================
