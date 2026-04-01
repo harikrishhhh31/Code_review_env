@@ -34,28 +34,16 @@
 # This stage installs dependencies
 
 # Start from Python 3.11 image
-FROM python:3.11-slim as builder
-
-# Install uv for fast package management
-# uv is much faster than pip and has better dependency resolution
-RUN pip install uv
+FROM python:3.11-slim AS builder
 
 # Set working directory
 WORKDIR /app
 
 # Copy dependency files first (for better caching)
-COPY pyproject.toml uv.lock ./
+COPY requirements.txt ./
 
-# Install dependencies using uv
-# --frozen: Use exact versions from lock file
-# --no-install-project: Don't install the project itself (yet)
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-editable
-
-# Install project in editable mode (for development)
-# --no-editable: Install as regular package
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-editable
+# Install dependencies using pip
+RUN pip install --no-cache-dir -r requirements.txt
 
 # -----------------------------------------------------------------------------
 # Stage 2: Runtime
@@ -68,18 +56,11 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Copy virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
-
 # Copy application code
 COPY . /app
 
 # Set up Python path
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app:$PYTHONPATH"
-
-# Install OpenEnv CLI tools (if needed)
-RUN pip install openenv
+ENV PYTHONPATH="/app:${PYTHONPATH:-}"
 
 # -----------------------------------------------------------------------------
 # Health Check
