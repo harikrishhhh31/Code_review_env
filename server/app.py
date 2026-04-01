@@ -32,8 +32,8 @@ The server pattern:
 
 from openenv.core.env_server import create_app
 
-# Import environment and models
-from code_review_env import CodeReviewEnvironment
+# Import environment and models (relative import for package execution)
+from .code_review_env import CodeReviewEnvironment
 from models import CodeReviewAction, CodeReviewObservation, CodeReviewState
 
 # Create the FastAPI application
