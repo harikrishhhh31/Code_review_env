@@ -1,3 +1,13 @@
+---
+title: CodeReviewEnv
+emoji: 📝
+colorFrom: blue
+colorTo: green
+sdk: docker
+pinned: false
+app_port: 8000
+---
+
 # CodeReviewEnv - AI-Powered Code Review Environment
 
 ![OpenEnv](https://img.shields.io/badge/OpenEnv-Environment-blue)
@@ -5,18 +15,6 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 **CodeReviewEnv** is a reinforcement learning environment for training AI agents to perform code review tasks. Agents learn to analyze pull requests, identify bugs, security vulnerabilities, and readability issues.
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Environment API](#environment-api)
-- [Tasks](#tasks)
-- [Reward Design](#reward-design)
-- [Installation](#installation)
-- [Usage](#usage)
-- [Development](#development)
-- [Deployment](#deployment)
 
 ## Overview
 
@@ -27,17 +25,11 @@ CodeReviewEnv simulates a professional code review workflow where an AI agent:
 3. **Submits** findings as structured feedback
 4. **Receives** rewards based on accuracy
 
-The environment supports three difficulty levels:
-
-| Task | Difficulty | Description |
-|------|------------|-------------|
-| Readability Review | Easy | Identify code style and clarity issues |
-| Bug & Logic Review | Medium | Find logic errors and bugs |
-| Full PR Review | Hard | Complete review with security analysis |
+Task samples include both **Python** and **JavaScript** code to encourage multi-language review skills.
 
 ## Quick Start
 
-### Option 1: Use as a Python Library (Local Development)
+### Python Library (Local Development)
 
 ```python
 from server.code_review_env import CodeReviewEnvironment
@@ -54,7 +46,7 @@ print(f"Code:\n{obs.pr_info['code']}")
 
 # Submit code review
 action = CodeReviewAction(
-    review_text="Found 2 readability issues...",
+    review_text="Found readability issues...",
     findings=[
         {
             "type": "readability",
@@ -76,7 +68,7 @@ print(f"Feedback: {result.feedback}")
 env.close()
 ```
 
-### Option 2: Run Baseline Inference
+### Run Baseline Inference
 
 ```bash
 # Set OpenAI API key
@@ -87,42 +79,6 @@ python baseline_inference.py
 
 # Run on specific task
 python baseline_inference.py --task readability --verbose
-```
-
-## Environment API
-
-CodeReviewEnv follows the OpenEnv specification with typed models.
-
-### Core Methods
-
-| Method | Description |
-|--------|-------------|
-| `reset(task_id, task_index)` | Start new episode, returns initial observation |
-| `step(action)` | Take action, returns observation with reward |
-| `state` | Get current internal state (property) |
-
-### Models
-
-#### CodeReviewAction
-
-```python
-class CodeReviewAction(Action):
-    review_text: str                    # Agent's review text
-    findings: List[Dict[str, Any]]     # Structured issues found
-    confidence: float                   # Agent confidence (0.0-1.0)
-    review_category: str               # 'readability', 'bug_logic', 'full_review'
-```
-
-#### CodeReviewObservation
-
-```python
-class CodeReviewObservation(Observation):
-    pr_info: Dict[str, Any]           # PR title, description, code
-    feedback: str                      # Environment feedback
-    score_breakdown: Dict[str, float] # Scores by category
-    reward: float                      # Step reward
-    cumulative_score: float            # Total episode score
-    done: bool                         # Episode complete?
 ```
 
 ## Tasks
@@ -137,12 +93,6 @@ class CodeReviewObservation(Observation):
 - Missing type hints
 - Complex logic
 
-**Example Issues:**
-```python
-# Bad: def calc(a,b):
-# Good: def calculate_sum(first_number, second_number):
-```
-
 ### Task 2: Bug & Logic Review (Medium)
 
 **Objective:** Find logic errors and bugs in code.
@@ -152,12 +102,6 @@ class CodeReviewObservation(Observation):
 - Missing edge case handling
 - Incorrect algorithms
 - Empty list handling
-
-**Example Issues:**
-```python
-# Bug: max_val = 0  # Fails for negative numbers
-# Fix: max_val = float('-inf') or first element
-```
 
 ### Task 3: Full PR Review (Hard)
 
@@ -169,17 +113,17 @@ class CodeReviewObservation(Observation):
 - Security vulnerabilities (SQL injection, XSS, etc.)
 - PR description accuracy
 
-**Example Issues:**
-```python
-# Security: query = f"SELECT * FROM users WHERE name='{username}'"
-# Fix: query = "SELECT * FROM users WHERE name=?", (username,)
-```
+## Scoring
+
+| Task | Difficulty | Description |
+|------|------------|-------------|
+| Readability Review | Easy | Identify code style and clarity issues |
+| Bug & Logic Review | Medium | Find logic errors and bugs |
+| Full PR Review | Hard | Complete review with security analysis |
 
 ## Reward Design
 
-CodeReviewEnv uses **dense rewards** (feedback at each step) rather than sparse rewards (only at the end). This helps agents learn faster.
-
-### Reward Components
+CodeReviewEnv uses **dense rewards** (feedback at each step) rather than sparse rewards.
 
 | Component | Weight | Description |
 |-----------|--------|-------------|
@@ -188,18 +132,13 @@ CodeReviewEnv uses **dense rewards** (feedback at each step) rather than sparse 
 | Completeness bonus | 0.2 | Bonus for finding all issues |
 | Final score | 0.0-1.0 | Normalized total |
 
-### Score Breakdown
+## Environment API
 
-The environment provides detailed scoring by category:
-
-```python
-score_breakdown = {
-    "readability": 0.8,    # 80% of readability issues found
-    "logic": 0.5,          # 50% of bugs found
-    "security": 0.0,       # No security issues (for readability task)
-    "description_match": 1.0  # Description was accurate
-}
-```
+| Method | Description |
+|--------|-------------|
+| `reset(task_id, task_index)` | Start new episode, returns initial observation |
+| `step(action)` | Take action, returns observation with reward |
+| `state` | Get current internal state (property) |
 
 ## Installation
 
@@ -218,7 +157,6 @@ cd code-review-env
 # Create virtual environment
 python -m venv .venv
 source .venv/bin/activate  # Linux/Mac
-# or
 .venv\Scripts\activate     # Windows
 
 # Install dependencies
@@ -233,65 +171,9 @@ docker build -t code-review-env:latest -f server/Dockerfile .
 
 # Run the container
 docker run -p 8000:8000 code-review-env:latest
-
-# API docs available at http://localhost:8000/docs
 ```
 
-## Usage
-
-### Python API
-
-```python
-from server.code_review_env import CodeReviewEnvironment
-from models import CodeReviewAction
-
-# Initialize
-env = CodeReviewEnvironment(task_id="bug_logic")
-
-# Run episode
-obs = env.reset()
-print(f"Review this code:\n{obs.pr_info['code']}")
-
-# Agent submits review
-action = CodeReviewAction(
-    review_text="The code has a bug...",
-    findings=[
-        {
-            "type": "logic",
-            "severity": "critical",
-            "location": "line 3",
-            "description": "Doesn't handle negative numbers",
-            "suggestion": "Initialize with float('-inf')"
-        }
-    ]
-)
-
-result = env.step(action)
-print(f"Reward: {result.reward}")
-print(f"Total Score: {result.cumulative_score}")
-
-env.close()
-```
-
-### HTTP API
-
-After starting the server:
-
-```bash
-# Reset environment
-curl -X POST http://localhost:8000/reset \
-  -H "Content-Type: application/json" \
-  -d '{"task_id": "readability", "task_index": 0}'
-
-# Take a step
-curl -X POST http://localhost:8000/step \
-  -H "Content-Type: application/json" \
-  -d '{"action": {"review_text": "...", "findings": []}}'
-```
-
-## Development
-
-### Project Structure
+## Project Structure
 
 ```
 code_review_env/
@@ -299,7 +181,6 @@ code_review_env/
 ├── models.py                 # Typed models (Action, Observation, State)
 ├── rubric.py                 # Grading system
 ├── server/
-│   ├── __init__.py
 │   ├── app.py               # FastAPI server
 │   ├── code_review_env.py   # Environment class
 │   ├── Dockerfile           # Container image
@@ -308,29 +189,6 @@ code_review_env/
 ├── baseline_inference.py    # Baseline benchmark script
 ├── openenv.yaml             # Environment manifest
 └── README.md                # This file
-```
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test file
-pytest tests/test_models.py
-
-# Run with coverage
-pytest --cov=. --cov-report=html
-```
-
-### Validating Environment
-
-```bash
-# Install OpenEnv CLI
-pip install openenv
-
-# Validate the environment
-openenv validate --verbose
 ```
 
 ## Deployment
@@ -345,12 +203,16 @@ huggingface-cli login
 openenv push --repo-id your-username/code-review-env
 ```
 
-### Environment Variables
+## Development Status
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `OPENAI_API_KEY` | OpenAI API key for baseline | Required |
-| `HF_TOKEN` | Hugging Face token | Required for push |
+**Current Phase:** Initial implementation with 3 tasks
+
+**Planned Enhancements:**
+- [ ] Expand task pool (more PR samples)
+- [ ] Add multi-language support (JavaScript, Java, Go)
+- [ ] Improve grader precision
+- [ ] Add multi-step investigation actions
+- [ ] Security vulnerability detection enhancements
 
 ## Contributing
 
@@ -364,9 +226,3 @@ Contributions welcome! Please:
 ## License
 
 MIT License - see LICENSE file for details.
-
-## Acknowledgments
-
-- Built with [OpenEnv](https://github.com/meta-pytorch/OpenEnv)
-- Inspired by professional code review workflows
-- Designed for RL agent training

@@ -230,7 +230,6 @@ Please review this code and provide your findings.""",
             cumulative_score=0.0,
             done=False,
             metadata={
-                "ground_truth_issues": self._current_task["ground_truth_issues"],
                 "task_id": self._state.task_id,
                 "episode_id": new_episode_id,
             }
@@ -287,6 +286,12 @@ Please review this code and provide your findings.""",
         """
         # Increment step counter
         self._state.step_count += 1
+
+        # Safety guard: ensure reset() has been called
+        if self._current_task is None:
+            raise RuntimeError(
+                "Environment not initialized. Call reset() before step()."
+            )
         
         # Track agent's findings
         self._state.agent_findings_history.extend(action.findings)
@@ -332,7 +337,6 @@ Please review this code and provide your findings.""",
             metadata={
                 "step": self._state.step_count,
                 "max_steps": self._state.max_steps,
-                "ground_truth_issues": self._current_task["ground_truth_issues"],
                 "task_id": self._state.task_id,
             }
         )
@@ -426,6 +430,9 @@ Please review this code and provide your findings.""",
         Returns:
             Dictionary with scores for each category
         """
+        if self._current_task is None:
+            return {}
+
         findings = action.findings
         ground_truth = self._current_task["ground_truth_issues"]
         
@@ -468,6 +475,9 @@ Please review this code and provide your findings.""",
         Returns:
             List of findings with correctness evaluation
         """
+        if self._current_task is None:
+            return []
+
         graded = []
         ground_truth = self._current_task["ground_truth_issues"]
         

@@ -25,6 +25,12 @@ Each task has:
 """
 
 # =============================================================================
+# Imports
+# =============================================================================
+
+from typing import Optional
+
+# =============================================================================
 # TASK 1: READABILITY REVIEW (Easy)
 # =============================================================================
 # Task: Identify code style and readability issues
@@ -133,7 +139,141 @@ TASK1_READABILITY_PR_2 = {
     ]
 }
 
-TASK1_PR_POOL = [TASK1_READABILITY_PR, TASK1_READABILITY_PR_2]
+TASK1_READABILITY_PR_3 = {
+    "id": "readability_003",
+    "title": "Add temperature converter",
+    "description": "Utility for converting between Fahrenheit and Celsius",
+    "language": "python",
+    "code": '''def conv(f):
+    c=(f-32)*5/9
+    return c
+
+def conv2(c):
+    return (c*9/5)+32''',
+    "files_changed": ["utils/temperature.py"],
+    "issues": [
+        {
+            "type": "readability",
+            "severity": "medium",
+            "location": "function conv",
+            "description": "Function name 'conv' is vague",
+            "suggestion": "Rename to 'fahrenheit_to_celsius'"
+        },
+        {
+            "type": "readability",
+            "severity": "medium",
+            "location": "function conv2",
+            "description": "Function name 'conv2' is vague",
+            "suggestion": "Rename to 'celsius_to_fahrenheit'"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "line 1",
+            "description": "No type hints",
+            "suggestion": "Add type hints for parameters and return"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "functions conv/conv2",
+            "description": "No docstrings",
+            "suggestion": "Add docstrings describing conversions"
+        },
+    ]
+}
+
+TASK1_READABILITY_PR_4 = {
+    "id": "readability_004",
+    "title": "Format user name",
+    "description": "Format first and last name into display name",
+    "language": "javascript",
+    "code": '''function fmt(a,b){
+  return a+" "+b;
+}
+
+function n(x){
+  return x.trim();
+}''',
+    "files_changed": ["src/user/format.js"],
+    "issues": [
+        {
+            "type": "readability",
+            "severity": "high",
+            "location": "function fmt",
+            "description": "Function name 'fmt' is unclear",
+            "suggestion": "Rename to 'formatDisplayName'"
+        },
+        {
+            "type": "readability",
+            "severity": "high",
+            "location": "function n",
+            "description": "Function name 'n' is unclear",
+            "suggestion": "Rename to 'normalizeName'"
+        },
+        {
+            "type": "readability",
+            "severity": "medium",
+            "location": "line 1",
+            "description": "No input validation for null or undefined",
+            "suggestion": "Add checks for empty inputs"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "functions fmt/n",
+            "description": "No JSDoc comments",
+            "suggestion": "Add JSDoc comments for parameters"
+        },
+    ]
+}
+
+TASK1_READABILITY_PR_5 = {
+    "id": "readability_005",
+    "title": "Normalize emails",
+    "description": "Utility to normalize email strings",
+    "language": "python",
+    "code": '''def norm_email(e):
+    return e.strip().lower()
+
+def norm_all(l):
+    out = []
+    for i in l:
+        out.append(norm_email(i))
+    return out''',
+    "files_changed": ["utils/email.py"],
+    "issues": [
+        {
+            "type": "readability",
+            "severity": "medium",
+            "location": "function norm_email",
+            "description": "Function name is abbreviated",
+            "suggestion": "Rename to 'normalize_email'"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "function norm_all",
+            "description": "Variable name 'l' is unclear",
+            "suggestion": "Use 'emails' instead of 'l'"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "function norm_all",
+            "description": "List comprehension would be clearer",
+            "suggestion": "Use: return [normalize_email(e) for e in emails]"
+        },
+    ]
+}
+
+TASK1_PR_POOL = [
+    TASK1_READABILITY_PR,
+    TASK1_READABILITY_PR_2,
+    TASK1_READABILITY_PR_3,
+    TASK1_READABILITY_PR_4,
+    TASK1_READABILITY_PR_5,
+]
 
 
 # =============================================================================
@@ -242,7 +382,61 @@ TASK2_BUG_LOGIC_PR_3 = {
     ]
 }
 
-TASK2_PR_POOL = [TASK2_BUG_LOGIC_PR, TASK2_BUG_LOGIC_PR_2, TASK2_BUG_LOGIC_PR_3]
+TASK2_BUG_LOGIC_PR_4 = {
+    "id": "bug_logic_004",
+    "title": "Calculate average",
+    "description": "Compute average for list of numbers",
+    "language": "javascript",
+    "code": '''function average(nums){
+  let total = 0;
+  for (let i = 0; i < nums.length; i++) {
+    total += nums[i];
+  }
+  return total / nums.length;
+}''',
+    "files_changed": ["src/math/average.js"],
+    "issues": [
+        {
+            "type": "logic",
+            "severity": "high",
+            "location": "function average",
+            "description": "No check for empty array; division by zero returns Infinity",
+            "suggestion": "Handle empty array and return null or 0"
+        },
+    ]
+}
+
+TASK2_BUG_LOGIC_PR_5 = {
+    "id": "bug_logic_005",
+    "title": "Filter active users",
+    "description": "Return only active users from list",
+    "language": "python",
+    "code": '''def active_users(users):
+    """Return only active users."""
+    result = []
+    for u in users:
+        if u.get("active") == True:
+            result.append(u)
+    return users''',
+    "files_changed": ["users/filters.py"],
+    "issues": [
+        {
+            "type": "logic",
+            "severity": "critical",
+            "location": "line 6",
+            "description": "Returns original users list instead of filtered result",
+            "suggestion": "Return result instead of users"
+        },
+    ]
+}
+
+TASK2_PR_POOL = [
+    TASK2_BUG_LOGIC_PR,
+    TASK2_BUG_LOGIC_PR_2,
+    TASK2_BUG_LOGIC_PR_3,
+    TASK2_BUG_LOGIC_PR_4,
+    TASK2_BUG_LOGIC_PR_5,
+]
 
 
 # =============================================================================
@@ -441,7 +635,65 @@ def get_user(username):
     ]
 }
 
-TASK3_PR_POOL = [TASK3_FULL_REVIEW_PR, TASK3_FULL_REVIEW_PR_2]
+TASK3_FULL_REVIEW_PR_3 = {
+    "id": "full_review_003",
+    "title": "Add password reset endpoint",
+    "description": "Allows users to reset password with secure token validation",
+    "language": "javascript",
+    "code": '''const express = require("express");
+const app = express();
+
+app.post("/reset", (req, res) => {
+  const token = req.body.token;
+  const newPassword = req.body.password;
+
+  // TODO: validate token
+  if (!token) {
+    return res.status(400).send("missing token");
+  }
+
+  // directly update password
+  db.query(`UPDATE users SET password='${newPassword}' WHERE reset_token='${token}'`);
+  return res.send("ok");
+});''',
+    "files_changed": ["api/reset.js"],
+    "issues": [
+        {
+            "type": "security",
+            "severity": "critical",
+            "location": "db.query line",
+            "description": "SQL injection via string interpolation",
+            "suggestion": "Use parameterized queries"
+        },
+        {
+            "type": "security",
+            "severity": "critical",
+            "location": "password update",
+            "description": "Stores password in plain text",
+            "suggestion": "Hash password before storing"
+        },
+        {
+            "type": "logic",
+            "severity": "high",
+            "location": "token validation",
+            "description": "Token is not validated or expired; TODO left",
+            "suggestion": "Validate token and check expiration"
+        },
+        {
+            "type": "description_match",
+            "severity": "critical",
+            "location": "overall",
+            "description": "PR claims secure token validation but none implemented",
+            "suggestion": "Implement token validation or update description"
+        },
+    ]
+}
+
+TASK3_PR_POOL = [
+    TASK3_FULL_REVIEW_PR,
+    TASK3_FULL_REVIEW_PR_2,
+    TASK3_FULL_REVIEW_PR_3,
+]
 
 
 # =============================================================================
@@ -494,6 +746,11 @@ def get_task_by_id(task_id: str, index: int = 0) -> dict:
     pool = pools.get(task_id, TASK1_PR_POOL)
     pr = pool[index % len(pool)]
     
+    issues = pr["issues"]
+    description_match = not any(
+        issue.get("type") == "description_match" for issue in issues
+    )
+
     return {
         "task_id": task_id,
         "pr_info": {
@@ -502,13 +759,13 @@ def get_task_by_id(task_id: str, index: int = 0) -> dict:
             "language": pr["language"],
             "code": pr["code"],
             "files_changed": pr["files_changed"],
-            "description_match": True  # Assume matches unless issues say otherwise
+            "description_match": description_match
         },
-        "ground_truth_issues": pr["issues"]
+        "ground_truth_issues": issues
     }
 
 
-def get_random_task(difficulty: str = None) -> dict:
+def get_random_task(difficulty: Optional[str] = None) -> dict:
     """
     Get a random task, optionally filtered by difficulty.
     
@@ -529,6 +786,11 @@ def get_random_task(difficulty: str = None) -> dict:
     else:
         task_data = random.choice(ALL_TASKS)
     
+    issues = task_data["pr"]["issues"]
+    description_match = not any(
+        issue.get("type") == "description_match" for issue in issues
+    )
+
     return {
         "task_id": task_data["task_id"],
         "pr_info": {
@@ -537,9 +799,9 @@ def get_random_task(difficulty: str = None) -> dict:
             "language": task_data["pr"]["language"],
             "code": task_data["pr"]["code"],
             "files_changed": task_data["pr"]["files_changed"],
-            "description_match": True
+            "description_match": description_match
         },
-        "ground_truth_issues": task_data["pr"]["issues"]
+        "ground_truth_issues": issues
     }
 
 
