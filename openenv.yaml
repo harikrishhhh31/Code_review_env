@@ -1,36 +1,12 @@
-# =============================================================================
-# openenv.yaml - Environment Manifest for CodeReviewEnv
-# =============================================================================
-#
-# This file defines the environment metadata for OpenEnv.
-# It's used by:
-# 1. openenv CLI for validation and deployment
-# 2. Hugging Face Spaces for documentation
-# 3. Environment registry
-#
-# LEARNING: Why a manifest?
-# The manifest is like a "nutrition label" for your environment.
-# It tells anyone:
-# - What the environment does
-# - What tasks are available
-# - How to use it
-# - Who made it
-#
-# =============================================================================
 
-# Environment name (unique identifier)
-# Convention: lowercase_with_underscores
 name: code_review_env
 
-# Semantic version (follow semver.org)
 version: "1.0.0"
 
-# Short description (1-2 sentences)
 description: >
   AI-powered code review environment where agents analyze pull requests,
   identify bugs, security issues, and readability problems.
 
-# Long description (shown on HF Spaces)
 long_description: |
   CodeReviewEnv is a reinforcement learning environment for training
   code review agents. Agents learn to:
@@ -40,26 +16,20 @@ long_description: |
   - Detect security vulnerabilities
   - Verify code matches PR description
   
-  ## Tasks
   
-  ### Task 1: Readability Review (Easy)
   Identify code style and clarity issues. Perfect for learning basic
   code quality assessment.
   
-  ### Task 2: Bug & Logic Review (Medium)
   Find logic errors and bugs in code. Requires understanding what the
   code SHOULD do vs what it actually does.
   
-  ### Task 3: Full PR Review (Hard)
   Complete code review including security analysis and verification
   that code matches its stated purpose.
   
-  ## Reward Design
   
   Dense rewards (reward at each step) help agents learn efficiently.
   Partial credit is given for identifying issues correctly.
   
-  ## Usage
   
   ```python
   from code_review_env import CodeReviewEnv, CodeReviewAction
@@ -67,7 +37,6 @@ long_description: |
   env = CodeReviewEnv()
   obs = env.reset(task_id="readability")
   
-  # Agent reviews code and submits findings
   action = CodeReviewAction(
       review_text="Found 2 issues: ...",
       findings=[{"type": "readability", "location": "line 1", ...}]
@@ -77,16 +46,13 @@ long_description: |
   print(f"Score: {result.cumulative_score}")
   ```
 
-# Author information
 author:
   name: "Code Review Env Team"
   email: "contact@example.com"
   github: "https://github.com/example/code-review-env"
 
-# License (SPDX format)
 license: MIT
 
-# Tags for search/discovery
 tags:
   - code-review
   - software-engineering
@@ -96,15 +62,8 @@ tags:
   - pull-request
   - python
 
-# =============================================================================
-# TASKS DEFINITION
-# =============================================================================
-# Each task is a distinct objective the agent can be evaluated on.
 
 tasks:
-  # --------------------------------------------------------------------------
-  # Task 1: Readability Review
-  # --------------------------------------------------------------------------
   - id: readability
     name: "Readability Review"
     difficulty: easy
@@ -117,9 +76,6 @@ tasks:
     max_steps: 10
     reward_scale: 1.0
     
-  # --------------------------------------------------------------------------
-  # Task 2: Bug & Logic Review  
-  # --------------------------------------------------------------------------
   - id: bug_logic
     name: "Bug & Logic Review"
     difficulty: medium
@@ -132,9 +88,6 @@ tasks:
     max_steps: 10
     reward_scale: 1.0
     
-  # --------------------------------------------------------------------------
-  # Task 3: Full PR Review
-  # --------------------------------------------------------------------------
   - id: full_review
     name: "Full Pull Request Review"
     difficulty: hard
@@ -147,28 +100,17 @@ tasks:
     max_steps: 10
     reward_scale: 1.0
 
-# =============================================================================
-# TECHNICAL SPECIFICATION
-# =============================================================================
 
-# Runtime environment
 runtime:
-  # Python version required
   python_version: "3.11"
   
-  # Required packages (installed via pyproject.toml)
-  # Listed here for documentation purposes
   dependencies:
     - openenv>=0.1.0
     - fastapi>=0.100.0
     - uvicorn>=0.23.0
     - pydantic>=2.0.0
 
-# =============================================================================
-# API SPECIFICATION
-# =============================================================================
 
-# Action format (what the agent sends)
 action:
   fields:
     - name: review_text
@@ -196,7 +138,6 @@ action:
             type: string
             description: "How to fix (optional)"
 
-# Observation format (what the agent receives)
 observation:
   fields:
     - name: pr_info
@@ -218,43 +159,28 @@ observation:
       type: boolean
       description: "Whether episode is complete"
 
-# =============================================================================
-# DEPLOYMENT CONFIGURATION
-# =============================================================================
 
 deployment:
-  # Container settings
   container:
     port: 8000
     health_check_path: /health
     
-  # Hugging Face Space settings (if deploying to HF)
   huggingface:
-    # Space SDK (docker is most common)
     sdk: docker
     
-    # Space hardware
     hardware: "basic"  # or "cpu-basic", "cpu-upgrade", "t4-small"
     
-    # Space configuration
     config:
-      # Start command inside container
       app_port: 8000
       
-      # Gradio UI settings (if using web interface)
       title: "CodeReviewEnv"
       description: "AI-powered code review environment"
       emoji: "code_review"
       color_from: "blue"
       color_to: "green"
 
-# =============================================================================
-# VALIDATION RULES
-# =============================================================================
 
-# These rules are checked by `openenv validate`
 validation:
-  # Required files
   required_files:
     - models.py
     - rubric.py
@@ -265,19 +191,14 @@ validation:
     - README.md
     - baseline_inference.py
     
-  # Minimum task count
   min_tasks: 3
   
-  # Required methods
   required_methods:
     - reset
     - step
     - state
   
-  # Test requirements
   tests:
-    # Should pass basic sanity checks
     sanity_check: true
     
-    # Example test cases should exist
     has_examples: true

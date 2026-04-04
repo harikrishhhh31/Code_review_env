@@ -18,7 +18,7 @@ Quick Start:
 For more examples, see README.md
 """
 
-# Import main classes for easy access
+                                     
 from server.code_review_env import CodeReviewEnvironment
 from models import (
     CodeReviewAction,
@@ -27,10 +27,10 @@ from models import (
     Finding,
 )
 
-# Version
+         
 __version__ = "1.0.0"
 
-# Public API
+            
 __all__ = [
     "CodeReviewEnvironment",
     "CodeReviewAction", 

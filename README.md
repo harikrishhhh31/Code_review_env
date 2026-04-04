@@ -25,7 +25,7 @@ CodeReviewEnv simulates a professional code review workflow where an AI agent:
 3. **Submits** findings as structured feedback
 4. **Receives** rewards based on accuracy
 
-Task samples include both **Python** and **JavaScript** code to encourage multi-language review skills.
+Task samples include **Python**, **JavaScript**, and **TypeScript** to encourage multi-language review skills.
 
 ## Quick Start
 

@@ -24,18 +24,18 @@ Each task has:
 - expected_findings: What agent SHOULD identify
 """
 
-# =============================================================================
-# Imports
-# =============================================================================
+                                                                               
+         
+                                                                               
 
 from typing import Optional
 
-# =============================================================================
-# TASK 1: READABILITY REVIEW (Easy)
-# =============================================================================
-# Task: Identify code style and readability issues
-# Difficulty: Easy - issues are obvious, no logic analysis needed
-# What agent learns: Basic code quality assessment
+                                                                               
+                                   
+                                                                               
+                                                  
+                                                                 
+                                                  
 
 TASK1_READABILITY_PR = {
     "id": "readability_001",
@@ -267,21 +267,100 @@ def norm_all(l):
     ]
 }
 
+TASK1_READABILITY_PR_6 = {
+    "id": "readability_006",
+    "title": "Capitalize product name",
+    "description": "Utility to normalize product names",
+    "language": "typescript",
+    "code": '''export function cap(n){
+  return n[0].toUpperCase()+n.slice(1);
+}
+
+export function clean(s){
+  return s.trim();
+}''',
+    "files_changed": ["src/catalog/format.ts"],
+    "issues": [
+        {
+            "type": "readability",
+            "severity": "high",
+            "location": "function cap",
+            "description": "Function name 'cap' is unclear",
+            "suggestion": "Rename to 'capitalizeName'"
+        },
+        {
+            "type": "readability",
+            "severity": "medium",
+            "location": "function cap",
+            "description": "No input validation for empty string",
+            "suggestion": "Handle empty or null input"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "functions cap/clean",
+            "description": "Missing type annotations",
+            "suggestion": "Add explicit parameter and return types"
+        },
+    ]
+}
+
+TASK1_READABILITY_PR_7 = {
+    "id": "readability_007",
+    "title": "Normalize phone numbers",
+    "description": "Strip punctuation from phone strings",
+    "language": "python",
+    "code": '''def normalize(p):
+    return p.replace("-", "").replace("(", "").replace(")", "")
+
+def normalize_all(items):
+    res = []
+    for i in items:
+        res.append(normalize(i))
+    return res''',
+    "files_changed": ["utils/phone.py"],
+    "issues": [
+        {
+            "type": "readability",
+            "severity": "medium",
+            "location": "function normalize",
+            "description": "Function name is too generic",
+            "suggestion": "Rename to 'normalize_phone'"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "line 1",
+            "description": "Chained replace calls reduce readability",
+            "suggestion": "Use regex or a helper function"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "function normalize_all",
+            "description": "List comprehension would be clearer",
+            "suggestion": "Use: return [normalize_phone(i) for i in items]"
+        },
+    ]
+}
+
 TASK1_PR_POOL = [
     TASK1_READABILITY_PR,
     TASK1_READABILITY_PR_2,
     TASK1_READABILITY_PR_3,
     TASK1_READABILITY_PR_4,
     TASK1_READABILITY_PR_5,
+    TASK1_READABILITY_PR_6,
+    TASK1_READABILITY_PR_7,
 ]
 
 
-# =============================================================================
-# TASK 2: BUG & LOGIC REVIEW (Medium)
-# =============================================================================
-# Task: Find logic errors and bugs in code
-# Difficulty: Medium - requires understanding what code SHOULD do
-# What agent learns: Critical thinking about program correctness
+                                                                               
+                                     
+                                                                               
+                                          
+                                                                 
+                                                                
 
 TASK2_BUG_LOGIC_PR = {
     "id": "bug_logic_001",
@@ -430,21 +509,66 @@ TASK2_BUG_LOGIC_PR_5 = {
     ]
 }
 
+TASK2_BUG_LOGIC_PR_6 = {
+    "id": "bug_logic_006",
+    "title": "Sum order totals",
+    "description": "Calculate total price from list of items",
+    "language": "python",
+    "code": '''def total(items):
+    """Sum prices from list of items."""
+    total = 0
+    for item in items:
+        total = item["price"]
+    return total''',
+    "files_changed": ["orders/totals.py"],
+    "issues": [
+        {
+            "type": "logic",
+            "severity": "high",
+            "location": "line 4",
+            "description": "Overwrites total instead of accumulating",
+            "suggestion": "Use total += item['price']"
+        },
+    ]
+}
+
+TASK2_BUG_LOGIC_PR_7 = {
+    "id": "bug_logic_007",
+    "title": "Compute discount",
+    "description": "Apply percentage discount to a price",
+    "language": "typescript",
+    "code": '''export function discount(price: number, pct: number){
+  return price - price * pct;
+}''',
+    "files_changed": ["src/billing/discount.ts"],
+    "issues": [
+        {
+            "type": "logic",
+            "severity": "medium",
+            "location": "function discount",
+            "description": "Assumes pct is 0-1, but callers may pass 10 for 10%",
+            "suggestion": "Clarify percent units or divide by 100"
+        },
+    ]
+}
+
 TASK2_PR_POOL = [
     TASK2_BUG_LOGIC_PR,
     TASK2_BUG_LOGIC_PR_2,
     TASK2_BUG_LOGIC_PR_3,
     TASK2_BUG_LOGIC_PR_4,
     TASK2_BUG_LOGIC_PR_5,
+    TASK2_BUG_LOGIC_PR_6,
+    TASK2_BUG_LOGIC_PR_7,
 ]
 
 
-# =============================================================================
-# TASK 3: FULL PR REVIEW (Hard)
-# =============================================================================
-# Task: Comprehensive review of code + description accuracy
-# Difficulty: Hard - requires security knowledge + verification
-# What agent learns: Professional code review skills
+                                                                               
+                               
+                                                                               
+                                                           
+                                                               
+                                                    
 
 TASK3_FULL_REVIEW_PR = {
     "id": "full_review_001",
@@ -477,7 +601,7 @@ def create_session(user_id):
     return session_id''',
     "files_changed": ["auth/login.py", "auth/session.py"],
     "issues": [
-        # SECURITY - Critical issues
+                                    
         {
             "type": "security",
             "severity": "critical",
@@ -499,7 +623,7 @@ def create_session(user_id):
             "description": "Session ID uses weak random - predictable",
             "suggestion": "Use secrets.token_hex() or uuid4() for secure session IDs"
         },
-        # LOGIC issues
+                      
         {
             "type": "logic",
             "severity": "medium",
@@ -507,7 +631,7 @@ def create_session(user_id):
             "description": "Code returns True even if password is None/empty",
             "suggestion": "Add explicit check: if user.password and user.password == password"
         },
-        # READABILITY issues
+                            
         {
             "type": "readability",
             "severity": "low",
@@ -515,7 +639,7 @@ def create_session(user_id):
             "description": "Function is doing two things (auth + db lookup)",
             "suggestion": "Split into separate functions or add docstring"
         },
-        # DESCRIPTION MATCH - Critical!
+                                       
         {
             "type": "description_match",
             "severity": "critical",
@@ -573,7 +697,7 @@ def get_user(username):
     })''',
     "files_changed": ["api/routes.py", "api/models.py"],
     "issues": [
-        # SECURITY - Critical
+                             
         {
             "type": "security",
             "severity": "critical",
@@ -609,7 +733,7 @@ def get_user(username):
             "description": "No rate limiting - vulnerable to brute force registration",
             "suggestion": "Add rate limiting middleware"
         },
-        # LOGIC issues
+                      
         {
             "type": "logic",
             "severity": "medium",
@@ -624,7 +748,7 @@ def get_user(username):
             "description": "No null check for user - will crash if user doesn't exist",
             "suggestion": "Return 404 if user is None"
         },
-        # DESCRIPTION MATCH
+                           
         {
             "type": "description_match",
             "severity": "critical",
@@ -689,42 +813,140 @@ app.post("/reset", (req, res) => {
     ]
 }
 
+TASK3_FULL_REVIEW_PR_4 = {
+    "id": "full_review_004",
+    "title": "Add API key authentication",
+    "description": "Validate API key on protected endpoints",
+    "language": "python",
+    "code": '''from flask import request
+
+def require_key(func):
+    def wrapper(*args, **kwargs):
+        key = request.headers.get("X-API-KEY")
+        if key != "hardcoded":
+            return {"error": "unauthorized"}, 401
+        return func(*args, **kwargs)
+    return wrapper''',
+    "files_changed": ["auth/api_key.py"],
+    "issues": [
+        {
+            "type": "security",
+            "severity": "critical",
+            "location": "line 5",
+            "description": "Hardcoded API key in source code",
+            "suggestion": "Load API key from secure config or environment"
+        },
+        {
+            "type": "security",
+            "severity": "high",
+            "location": "line 4",
+            "description": "No constant-time comparison for API key",
+            "suggestion": "Use hmac.compare_digest for comparison"
+        },
+        {
+            "type": "readability",
+            "severity": "low",
+            "location": "function require_key",
+            "description": "Missing wraps decorator for function metadata",
+            "suggestion": "Use functools.wraps"
+        },
+        {
+            "type": "description_match",
+            "severity": "medium",
+            "location": "overall",
+            "description": "PR claims protected endpoints but no routing shown",
+            "suggestion": "Show how decorator is applied or update description"
+        },
+    ]
+}
+
+TASK3_FULL_REVIEW_PR_5 = {
+    "id": "full_review_005",
+    "title": "Add file upload endpoint",
+    "description": "Upload profile images with validation",
+    "language": "javascript",
+    "code": '''app.post("/upload", (req, res) => {
+  const file = req.files.file;
+  const name = file.name;
+
+  if (!name.endsWith(".png")) {
+    return res.status(400).send("invalid");
+  }
+
+  file.mv("/uploads/" + name);
+  return res.send("ok");
+});''',
+    "files_changed": ["api/upload.js"],
+    "issues": [
+        {
+            "type": "security",
+            "severity": "critical",
+            "location": "file.mv",
+            "description": "Path traversal risk with untrusted filename",
+            "suggestion": "Sanitize filename or generate a safe name"
+        },
+        {
+            "type": "security",
+            "severity": "high",
+            "location": "line 2",
+            "description": "No file size limit or content-type validation",
+            "suggestion": "Validate size and content type"
+        },
+        {
+            "type": "logic",
+            "severity": "medium",
+            "location": "extension check",
+            "description": "Only checks .png extension; content may be non-image",
+            "suggestion": "Validate mime type and file signature"
+        },
+        {
+            "type": "description_match",
+            "severity": "medium",
+            "location": "overall",
+            "description": "PR claims validation but only checks extension",
+            "suggestion": "Add full validation or update description"
+        },
+    ]
+}
+
 TASK3_PR_POOL = [
     TASK3_FULL_REVIEW_PR,
     TASK3_FULL_REVIEW_PR_2,
     TASK3_FULL_REVIEW_PR_3,
+    TASK3_FULL_REVIEW_PR_4,
+    TASK3_FULL_REVIEW_PR_5,
 ]
 
 
-# =============================================================================
-# TASK POOL - All tasks organized by difficulty
-# =============================================================================
+                                                                               
+                                               
+                                                                               
 
-# Easy tasks (readability only)
+                               
 EASY_TASKS = [
     {"task_id": "readability", "pr": pr}
     for pr in TASK1_PR_POOL
 ]
 
-# Medium tasks (bug/logic focus)
+                                
 MEDIUM_TASKS = [
     {"task_id": "bug_logic", "pr": pr}
     for pr in TASK2_PR_POOL
 ]
 
-# Hard tasks (full review)
+                          
 HARD_TASKS = [
     {"task_id": "full_review", "pr": pr}
     for pr in TASK3_PR_POOL
 ]
 
-# All tasks combined
+                    
 ALL_TASKS = EASY_TASKS + MEDIUM_TASKS + HARD_TASKS
 
 
-# =============================================================================
-# HELPER FUNCTIONS
-# =============================================================================
+                                                                               
+                  
+                                                                               
 
 def get_task_by_id(task_id: str, index: int = 0) -> dict:
     """
@@ -805,9 +1027,9 @@ def get_random_task(difficulty: Optional[str] = None) -> dict:
     }
 
 
-# =============================================================================
-# EXPORTS
-# =============================================================================
+                                                                               
+         
+                                                                               
 
 __all__ = [
     "TASK1_PR_POOL",

@@ -42,7 +42,7 @@ from typing import Optional, Dict, Any
 from openenv.core.env_client import EnvClient
 from openenv.core.client_types import StepResult
 
-# Import our typed models
+                         
 from models import CodeReviewAction, CodeReviewObservation, CodeReviewState
 
 
@@ -113,10 +113,10 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
         Returns:
             StepResult with parsed observation
         """
-        # Extract observation data
+                                  
         obs_data = payload.get("observation", {})
         
-        # Create observation object
+                                   
         observation = CodeReviewObservation(
             pr_info=obs_data.get("pr_info", {}),
             feedback=obs_data.get("feedback", ""),
@@ -128,7 +128,7 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
             metadata=obs_data.get("metadata", {}),
         )
         
-        # Extract metadata
+                          
         reward = obs_data.get("reward", 0.0)
         done = obs_data.get("done", False)
         
@@ -158,10 +158,10 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
             total_reward=payload.get("total_reward", 0.0),
         )
     
-    # =========================================================================
-    # CONVENIENCE METHODS
-    # =========================================================================
-    # These are helper methods that make the client easier to use
+                                                                               
+                         
+                                                                               
+                                                                 
     
     def reset_readability(self) -> StepResult[CodeReviewObservation]:
         """Reset for readability review task."""
@@ -176,9 +176,9 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
         return self.reset(task_id="full_review")
 
 
-# =============================================================================
-# FACTORY METHODS
-# =============================================================================
+                                                                               
+                 
+                                                                               
 
 class CodeReviewEnvFactory:
     """
@@ -198,8 +198,8 @@ class CodeReviewEnvFactory:
         Returns:
             Configured CodeReviewEnv client
         """
-        # This would use openenv's Docker integration
-        # For now, return a basic client
+                                                     
+                                        
         return CodeReviewEnv(base_url="http://localhost:8000")
     
     @staticmethod
@@ -217,9 +217,9 @@ class CodeReviewEnvFactory:
         return CodeReviewEnv(base_url=base_url)
 
 
-# =============================================================================
-# EXPORTS
-# =============================================================================
+                                                                               
+         
+                                                                               
 
 __all__ = [
     "CodeReviewEnv",

@@ -32,51 +32,51 @@ The server pattern:
 
 from openenv.core.env_server import create_app
 
-# Import environment and models (relative import for package execution)
+                                                                       
 from .code_review_env import CodeReviewEnvironment
 from models import CodeReviewAction, CodeReviewObservation, CodeReviewState
 
-# Create the FastAPI application
-# The create_app function:
-# 1. Sets up all HTTP endpoints (reset, step, state)
-# 2. Sets up WebSocket handling
-# 3. Registers routes on the FastAPI app
-# 4. Handles serialization/deserialization
+                                
+                          
+                                                    
+                               
+                                        
+                                          
 
 app = create_app(
-    # Pass the ENVIRONMENT CLASS (not instance)
-    # Each WebSocket session gets its own instance
+                                               
+                                                  
     env=CodeReviewEnvironment,
     
-    # Pass the ACTION model class
-    # Server uses this to validate incoming actions
+                                 
+                                                   
     action_cls=CodeReviewAction,
     
-    # Pass the OBSERVATION model class
-    # Server uses this to serialize responses
+                                      
+                                             
     observation_cls=CodeReviewObservation,
     
-    # Optional: Environment name for documentation
+                                                  
     env_name="code_review_env",
 )
 
 
-# =============================================================================
-# OPTIONAL: Custom Endpoints
-# =============================================================================
+                                                                               
+                            
+                                                                               
 
-# You can add custom endpoints here if needed.
-# The create_app already provides:
-# - GET /health - Health check
-# - POST /reset - Reset environment
-# - POST /step - Take a step
-# - GET /state - Get current state
-# - GET /schema - Get action/observation schemas
-# - GET /metadata - Get environment metadata
-# - WebSocket /ws - Persistent connection
+                                              
+                                  
+                              
+                                   
+                            
+                                  
+                                                
+                                            
+                                         
 
 
-# Example: Add a custom endpoint for listing available tasks
+                                                            
 @app.get("/tasks")
 async def list_tasks():
     """
@@ -110,7 +110,7 @@ async def list_tasks():
     }
 
 
-# Example: Custom endpoint to get task details
+                                              
 @app.get("/tasks/{task_id}")
 async def get_task_info(task_id: str):
     """
@@ -148,17 +148,17 @@ def _count_issues_by_type(issues):
     return counts
 
 
-# =============================================================================
-# RUN SERVER LOCALLY (for development)
-# =============================================================================
+                                                                               
+                                      
+                                                                               
 
 def main() -> None:
     """Entrypoint for running the server locally."""
     import uvicorn
 
-    # Run the server
-    # This is only for local development!
-    # In production, use Docker and the Dockerfile
+                    
+                                         
+                                                  
     print("Starting CodeReviewEnv server...")
     print("API docs available at: http://localhost:8000/docs")
 
@@ -166,7 +166,7 @@ def main() -> None:
         "app:app",
         host="0.0.0.0",
         port=8000,
-        reload=True  # Auto-reload on code changes (dev only!)
+        reload=True                                           
     )
 
 

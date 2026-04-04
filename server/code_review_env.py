@@ -29,23 +29,23 @@ import uuid
 from typing import Optional, Dict, Any, List
 from openenv.core.env_server.interfaces import Environment
 
-# Import our typed models
+                         
 from models import (
     CodeReviewAction,
     CodeReviewObservation,
     CodeReviewState,
 )
 
-# Import rubrics for grading
+                            
 from rubric import RubricFactory, ReadabilityRubric, BugLogicRubric, FullReviewRubric
 
-# Import task data (relative import to avoid module resolution issues)
+                                                                      
 from .tasks.task_data import get_task_by_id, get_random_task
 
 
-# =============================================================================
-# MAIN ENVIRONMENT CLASS
-# =============================================================================
+                                                                               
+                        
+                                                                               
 
 class CodeReviewEnvironment(Environment):
     """
@@ -73,12 +73,12 @@ class CodeReviewEnvironment(Environment):
         env.close()                 # Clean up
     """
     
-    # Class constant: Maximum steps per episode
-    # Prevents infinite episodes
+                                               
+                                
     MAX_STEPS_PER_EPISODE = 10
     
-    # Whether this environment supports concurrent sessions
-    # True = multiple WebSocket connections can each have their own environment
+                                                           
+                                                                               
     SUPPORTS_CONCURRENT_SESSIONS = True
     
     def __init__(
@@ -96,10 +96,10 @@ class CodeReviewEnvironment(Environment):
             task_index: Which PR in the task pool to use (for variety)
             seed: Random seed for reproducibility
         """
-        # Call parent class __init__ (required)
+                                               
         super().__init__()
         
-        # Initialize state
+                          
         self._state = CodeReviewState(
             episode_id=str(uuid.uuid4()),
             step_count=0,
@@ -109,18 +109,18 @@ class CodeReviewEnvironment(Environment):
             seed=seed
         )
         
-        # Set up rubric (grader) based on task
+                                              
         self._rubric = RubricFactory.create(self._state.task_id)
         
-        # Current task data (loaded during reset)
+                                                 
         self._current_task: Optional[Dict[str, Any]] = None
         
-        # Track step rewards for analysis
+                                         
         self._step_rewards: List[float] = []
     
-    # =========================================================================
-    # REQUIRED PROPERTIES AND METHODS (OpenEnv interface)
-    # =========================================================================
+                                                                               
+                                                         
+                                                                               
     
     @property
     def state(self) -> CodeReviewState:
@@ -173,22 +173,22 @@ class CodeReviewEnvironment(Environment):
         - Provides the first observation (agent sees PR to review)
         - Sets up ground truth for grading
         """
-        # Generate new episode ID if not provided
+                                                 
         new_episode_id = episode_id or str(uuid.uuid4())
         
-        # Override task_id if provided
+                                      
         if task_id is not None:
             self._state.task_id = task_id
-            # Update rubric for new task type
+                                             
             self._rubric = RubricFactory.create(task_id)
         
-        # Load task data (PR + ground truth)
+                                            
         self._current_task = get_task_by_id(
             self._state.task_id,
             task_index
         )
         
-        # Reset state
+                     
         self._state.episode_id = new_episode_id
         self._state.step_count = 0
         self._state.task_index = task_index
@@ -199,11 +199,11 @@ class CodeReviewEnvironment(Environment):
         )
         self._state.current_pr = self._current_task["pr_info"]
         
-        # Clear step rewards
+                            
         self._step_rewards = []
         
-        # Create initial observation
-        # This is what the agent sees first!
+                                    
+                                            
         observation = CodeReviewObservation(
             pr_info=self._current_task["pr_info"],
             feedback=f"""You are reviewing a Pull Request.
@@ -226,7 +226,7 @@ Please review this code and provide your findings.""",
                 "description_match": 0.0
             },
             findings_graded=[],
-            reward=0.0,  # No reward for reset
+            reward=0.0,                       
             cumulative_score=0.0,
             done=False,
             metadata={
@@ -284,20 +284,20 @@ Please review this code and provide your findings.""",
         - Credit assignment: Easier to link reward to action
         - Gradient signal: More frequent = better learning
         """
-        # Increment step counter
+                                
         self._state.step_count += 1
 
-        # Safety guard: ensure reset() has been called
+                                                      
         if self._current_task is None:
             raise RuntimeError(
                 "Environment not initialized. Call reset() before step()."
             )
         
-        # Track agent's findings
+                                
         self._state.agent_findings_history.extend(action.findings)
         
-        # Create observation for grading
-        # The rubric needs both action and observation
+                                        
+                                                      
         grading_observation = CodeReviewObservation(
             pr_info=self._current_task["pr_info"],
             metadata={
@@ -305,34 +305,34 @@ Please review this code and provide your findings.""",
             }
         )
         
-        # GRADE the action using rubric
-        # This is where the magic happens!
+                                       
+                                          
         reward = self._rubric(action, grading_observation)
         
-        # Track step rewards
+                            
         self._step_rewards.append(reward)
         self._state.total_reward += reward
         
-        # Calculate score breakdown
+                                   
         score_breakdown = self._compute_score_breakdown(action)
         
-        # Determine if episode is done
+                                      
         is_done = self._check_episode_done()
         
-        # Prepare feedback message
+                                  
         feedback = self._generate_feedback(action, reward, score_breakdown)
         
-        # Grade individual findings
+                                   
         findings_graded = self._grade_findings(action)
         
-        # Create final observation
+                                  
         observation = CodeReviewObservation(
             pr_info=self._current_task["pr_info"],
             feedback=feedback,
             score_breakdown=score_breakdown,
             findings_graded=findings_graded,
-            reward=reward,  # Step reward (this step only)
-            cumulative_score=self._state.total_reward,  # Total so far
+            reward=reward,                                
+            cumulative_score=self._state.total_reward,                
             done=is_done,
             metadata={
                 "step": self._state.step_count,
@@ -358,8 +358,8 @@ Please review this code and provide your findings.""",
         - Network connections
         - GPU resources
         """
-        # No resources to clean up in this simple environment
-        # But good practice to have the method
+                                                             
+                                              
         pass
     
     def get_metadata(self) -> Dict[str, Any]:
@@ -382,9 +382,9 @@ Please review this code and provide your findings.""",
             "max_steps": self.MAX_STEPS_PER_EPISODE,
         }
     
-    # =========================================================================
-    # HELPER METHODS
-    # =========================================================================
+                                                                               
+                    
+                                                                               
     
     def _get_task_description(self) -> str:
         """Get description of current task."""
@@ -409,7 +409,7 @@ Please review this code and provide your findings.""",
         Returns:
             True if episode should end
         """
-        # Check max steps
+                         
         if self._state.step_count >= self._state.max_steps:
             return True
         
@@ -436,7 +436,7 @@ Please review this code and provide your findings.""",
         findings = action.findings
         ground_truth = self._current_task["ground_truth_issues"]
         
-        # Count findings by type
+                                
         found_by_type = {}
         gt_by_type = {}
         
@@ -448,7 +448,7 @@ Please review this code and provide your findings.""",
             itype = issue.get("type", "other")
             gt_by_type[itype] = gt_by_type.get(itype, 0) + 1
         
-        # Calculate precision for each type
+                                           
         breakdown = {}
         for itype in set(list(found_by_type.keys()) + list(gt_by_type.keys())):
             found = found_by_type.get(itype, 0)
@@ -457,9 +457,9 @@ Please review this code and provide your findings.""",
             if found == 0:
                 breakdown[itype] = 0.0
             elif expected == 0:
-                breakdown[itype] = 0.5  # Partial credit for finding extra issues
+                breakdown[itype] = 0.5                                           
             else:
-                # Precision: how many of our findings were correct
+                                                                  
                 breakdown[itype] = min(found / expected, 1.0)
         
         return breakdown
@@ -485,11 +485,11 @@ Please review this code and provide your findings.""",
             is_correct = False
             points = 0.0
             
-            # Check if this finding matches any ground truth
+                                                            
             for gt_issue in ground_truth:
                 if self._findings_match(finding, gt_issue):
                     is_correct = True
-                    # Points based on severity
+                                              
                     severity_points = {
                         "critical": 0.3,
                         "high": 0.2,
@@ -516,19 +516,19 @@ Please review this code and provide your findings.""",
         gt_issue: Dict[str, Any]
     ) -> bool:
         """Check if agent finding matches ground truth issue."""
-        # Match on type
+                       
         if finding.get("type") != gt_issue.get("type"):
             return False
         
-        # Match on description keywords
+                                       
         finding_desc = finding.get("description", "").lower()
         gt_desc = gt_issue.get("description", "").lower()
         
-        # Check for keyword overlap
+                                   
         gt_words = [w for w in gt_desc.split() if len(w) > 4]
         matches = sum(1 for w in gt_words if w in finding_desc)
         
-        return matches >= 1  # At least one key word matches
+        return matches >= 1                                 
     
     def _generate_feedback(
         self,
@@ -544,14 +544,14 @@ Please review this code and provide your findings.""",
         Returns:
             Feedback string
         """
-        # Count findings by type
+                                
         findings = action.findings
         by_type = {}
         for f in findings:
             t = f.get("type", "other")
             by_type[t] = by_type.get(t, 0) + 1
         
-        # Build feedback
+                        
         feedback_lines = [
             f"Step {self._state.step_count}/{self._state.max_steps}",
             f"Reward: {reward:.2f}",
@@ -563,7 +563,7 @@ Please review this code and provide your findings.""",
         for ftype, count in by_type.items():
             feedback_lines.append(f"  - {ftype}: {count}")
         
-        # Add encouragement or correction
+                                         
         if reward > 0.5:
             feedback_lines.append("\nGood work! Keep it up!")
         elif reward > 0.2:
@@ -571,7 +571,7 @@ Please review this code and provide your findings.""",
         else:
             feedback_lines.append("\nReview the code more carefully.")
         
-        # Check if done
+                       
         if self._check_episode_done():
             feedback_lines.append("")
             feedback_lines.append(f"Episode complete! Final score: {self._state.total_reward:.2f}")
@@ -579,8 +579,8 @@ Please review this code and provide your findings.""",
         return "\n".join(feedback_lines)
 
 
-# =============================================================================
-# EXPORTS
-# =============================================================================
+                                                                               
+         
+                                                                               
 
 __all__ = ["CodeReviewEnvironment"]

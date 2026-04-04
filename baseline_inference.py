@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+                      
 """
 baseline_inference.py - Reproducible Baseline for CodeReviewEnv
 ==============================================================
@@ -39,7 +39,7 @@ import json
 import argparse
 from typing import Dict, Any, Optional, List
 
-# OpenAI API client
+                   
 try:
     from openai import OpenAI
 except ImportError:
@@ -47,28 +47,28 @@ except ImportError:
     print("Install with: pip install openai")
     exit(1)
 
-# Import our environment
+                        
 from models import CodeReviewAction, CodeReviewObservation
 from server.code_review_env import CodeReviewEnvironment
 
 
-# =============================================================================
-# CONFIGURATION
-# =============================================================================
+                                                                               
+               
+                                                                               
 
-# Default model to use
+                      
 DEFAULT_MODEL = "gpt-4"
 
-# Temperature for generation (lower = more deterministic)
+                                                         
 DEFAULT_TEMPERATURE = 0.3
 
-# Maximum tokens to generate
+                            
 DEFAULT_MAX_TOKENS = 1000
 
 
-# =============================================================================
-# BASELINE AGENT
-# =============================================================================
+                                                                               
+                
+                                                                               
 
 class BaselineAgent:
     """
@@ -101,7 +101,7 @@ Be thorough but accurate. Only report issues you are confident about."""
         """
         self.model = model
         
-        # Get API key from parameter or environment
+                                                   
         key = api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
             raise ValueError("OpenAI API key required. Set OPENAI_API_KEY environment variable.")
@@ -129,7 +129,7 @@ Be thorough but accurate. Only report issues you are confident about."""
         Returns:
             Dictionary with review_text and findings
         """
-        # Build task-specific prompt
+                                    
         if task_type == "readability":
             focus = "focus on readability and style issues"
         elif task_type == "bug_logic":
@@ -161,7 +161,7 @@ For each finding, include:
 
 Be specific and only report issues you are confident about."""
 
-        # Call OpenAI API
+                         
         response = self.client.chat.completions.create(
             model=self.model,
             messages=[
@@ -174,7 +174,7 @@ Be specific and only report issues you are confident about."""
         
         review_text = response.choices[0].message.content
         
-        # Parse findings from response
+                                      
         findings = self._parse_findings(review_text)
         
         return {
@@ -197,8 +197,8 @@ Be specific and only report issues you are confident about."""
         """
         findings = []
         
-        # Simple keyword-based extraction
-        # Look for patterns like "**Type:** readability" or "- [readability]"
+                                         
+                                                                             
         lines = review_text.split("\n")
         
         current_finding = None
@@ -206,7 +206,7 @@ Be specific and only report issues you are confident about."""
         for line in lines:
             line = line.strip()
             
-            # Look for type markers
+                                   
             if "type:" in line.lower():
                 if current_finding:
                     findings.append(current_finding)
@@ -218,43 +218,43 @@ Be specific and only report issues you are confident about."""
                     "suggestion": ""
                 }
             
-            # Look for severity markers
+                                       
             elif "severity:" in line.lower():
                 if current_finding:
                     current_finding["severity"] = self._extract_value(line, "severity")
             
-            # Look for location markers
+                                       
             elif "location:" in line.lower():
                 if current_finding:
                     current_finding["location"] = self._extract_value(line, "location")
             
-            # Look for description
+                                  
             elif "description:" in line.lower() or "what's wrong:" in line.lower():
                 if current_finding:
                     current_finding["description"] = self._extract_value(
                         line, "description"
                     )
             
-            # Look for suggestion
+                                 
             elif "suggestion:" in line.lower() or "fix:" in line.lower():
                 if current_finding:
                     current_finding["suggestion"] = self._extract_value(
                         line, "suggestion"
                     )
         
-        # Don't forget the last finding
+                                       
         if current_finding:
             findings.append(current_finding)
         
-        # If no structured findings found, try to extract from bullet points
+                                                                            
         if not findings:
-            # Look for lines mentioning code issues
+                                                   
             for line in lines:
                 line_lower = line.lower()
                 
-                # Keywords that indicate an issue
+                                                 
                 if any(kw in line_lower for kw in ["bug", "error", "issue", "problem", "vulnerability", "security", "missing", "should"]):
-                    # Try to classify the type
+                                              
                     if any(kw in line_lower for kw in ["security", "sql", "injection", "xss", "vulnerability"]):
                         ftype = "security"
                     elif any(kw in line_lower for kw in ["logic", "bug", "error", "wrong"]):
@@ -270,21 +270,21 @@ Be specific and only report issues you are confident about."""
                         "suggestion": ""
                     })
         
-        return findings[:10]  # Limit to 10 findings
+        return findings[:10]                        
     
     def _extract_value(self, line: str, field: str) -> str:
         """Extract value after field name in a line."""
         line_lower = line.lower()
         
-        # Find where the field name ends
+                                        
         idx = line_lower.find(field + ":")
         if idx == -1:
             return ""
         
-        # Get everything after the colon
+                                        
         value = line[idx + len(field) + 1:].strip()
         
-        # Clean up common prefixes
+                                  
         for prefix in ["**", "*", "-", " "]:
             if value.startswith(prefix):
                 value = value[1:].strip()
@@ -292,9 +292,9 @@ Be specific and only report issues you are confident about."""
         return value
 
 
-# =============================================================================
-# EVALUATION FUNCTIONS
-# =============================================================================
+                                                                               
+                      
+                                                                               
 
 def run_task(
     agent: BaselineAgent,
@@ -319,10 +319,10 @@ def run_task(
         print(f"Running task: {task_id} (index: {task_index})")
         print(f"{'='*60}")
     
-    # Create environment
+                        
     env = CodeReviewEnvironment(task_id=task_id)
     
-    # Reset environment
+                       
     obs = env.reset(task_id=task_id, task_index=task_index)
     
     if verbose:
@@ -333,7 +333,7 @@ def run_task(
         print(obs.pr_info["code"])
         print("-" * 40)
     
-    # Get review from agent
+                           
     review_result = agent.review_code(
         pr_title=obs.pr_info["title"],
         pr_description=obs.pr_info["description"],
@@ -347,7 +347,7 @@ def run_task(
         print(review_result["review_text"])
         print(f"\nParsed {len(review_result['findings'])} findings")
     
-    # Create action
+                   
     action = CodeReviewAction(
         review_text=review_result["review_text"],
         findings=review_result["findings"],
@@ -355,7 +355,7 @@ def run_task(
         review_category=task_id
     )
     
-    # Submit to environment
+                           
     result = env.step(action)
     
     if verbose:
@@ -395,11 +395,11 @@ def run_all_tasks(
     results = []
     
     for task_id in tasks:
-        # Run on first PR in pool
+                                 
         result = run_task(agent, task_id, task_index=0, verbose=verbose)
         results.append(result)
     
-    # Calculate overall score
+                             
     total_score = sum(r["cumulative_score"] for r in results)
     avg_score = total_score / len(results) if results else 0
     
@@ -413,9 +413,9 @@ def run_all_tasks(
     return summary
 
 
-# =============================================================================
-# MAIN FUNCTION
-# =============================================================================
+                                                                               
+               
+                                                                               
 
 def main():
     """Main entry point."""
@@ -448,7 +448,7 @@ def main():
     
     args = parser.parse_args()
     
-    # Check for API key
+                       
     api_key = args.api_key or os.environ.get("OPENAI_API_KEY")
     if not api_key:
         print("ERROR: OpenAI API key required")
@@ -460,12 +460,12 @@ def main():
     
     print(f"Using model: {args.model}")
     
-    # Create agent
+                  
     agent = BaselineAgent(model=args.model, api_key=api_key)
     
-    # Run evaluation
+                    
     if args.task:
-        # Run single task
+                         
         result = run_task(agent, args.task, verbose=args.verbose)
         summary = {
             "total_tasks": 1,
@@ -473,10 +473,10 @@ def main():
             "results": [result]
         }
     else:
-        # Run all tasks
+                       
         summary = run_all_tasks(agent, verbose=args.verbose)
     
-    # Print summary
+                   
     print("\n" + "=" * 60)
     print("SUMMARY")
     print("=" * 60)
@@ -484,12 +484,12 @@ def main():
     print(f"Average score: {summary['average_score']:.3f}")
     print(f"Total score: {summary['total_score']:.3f}")
     
-    # Print per-task results
+                            
     print("\nPer-task results:")
     for r in summary["results"]:
         print(f"  {r['task_id']}: {r['cumulative_score']:.3f}")
     
-    # Save to file if requested
+                               
     if args.output:
         with open(args.output, "w") as f:
             json.dump(summary, f, indent=2)

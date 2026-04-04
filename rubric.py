@@ -25,11 +25,11 @@ from typing import List, Dict, Any, Optional, Tuple
 from openenv.core.rubrics import Rubric
 
 
-# =============================================================================
-# PART 1: LEAF RUBRICS - Individual Evaluation Criteria
-# =============================================================================
-# Leaf rubrics evaluate ONE specific aspect of the agent's performance.
-# Think of them as individual "questions" in a rubric.
+                                                                               
+                                                       
+                                                                               
+                                                                       
+                                                      
 
 class CorrectnessRubric(Rubric):
     """
@@ -55,7 +55,7 @@ class CorrectnessRubric(Rubric):
         """
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0  # For logging/introspection
+        self.last_score = 0.0                             
     
     def forward(self, action, observation) -> float:
         """
@@ -72,31 +72,31 @@ class CorrectnessRubric(Rubric):
         Returns:
             Reward score between 0.0 and 1.0
         """
-        # Get agent's findings
+                              
         agent_findings = getattr(action, 'findings', [])
         
-        # Get ground truth (what issues actually exist)
+                                                       
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
         )
         
-        # Calculate precision: how many of agent's findings are correct?
+                                                                        
         if not agent_findings:
-            return 0.0  # No findings = no points
+            return 0.0                           
         
-        # Count correct findings (true positives)
+                                                 
         correct_count = 0
         for agent_finding in agent_findings:
-            # Check if this finding matches something in ground truth
+                                                                     
             for gt_issue in ground_truth:
                 if self._findings_match(agent_finding, gt_issue):
                     correct_count += 1
-                    break  # Count each finding once
+                    break                           
         
-        # Calculate precision score
+                                   
         precision = correct_count / len(agent_findings) if agent_findings else 0.0
         
-        # Store for introspection
+                                 
         self.last_score = precision
         
         return precision * self.weight
@@ -113,17 +113,17 @@ class CorrectnessRubric(Rubric):
         We use partial matching (contains) not exact matching.
         This is more forgiving and realistic.
         """
-        # Extract key fields
+                            
         agent_type = agent_finding.get('type', '').lower()
         gt_type = gt_issue.get('type', '').lower()
         
         agent_desc = agent_finding.get('description', '').lower()
         gt_desc = gt_issue.get('description', '').lower()
         
-        # Check type match
+                          
         type_match = agent_type == gt_type
         
-        # Check description similarity (partial match)
+                                                      
         desc_match = (
             gt_desc in agent_desc or 
             agent_desc in gt_desc or
@@ -158,9 +158,9 @@ class CompletenessRubric(Rubric):
         )
         
         if not ground_truth:
-            return 1.0  # No issues to find = full score
+            return 1.0                                  
         
-        # Count how many ground truth issues were found
+                                                       
         found_count = 0
         for gt_issue in ground_truth:
             for agent_finding in agent_findings:
@@ -168,7 +168,7 @@ class CompletenessRubric(Rubric):
                     found_count += 1
                     break
         
-        # Calculate recall
+                          
         recall = found_count / len(ground_truth)
         self.last_score = recall
         
@@ -180,7 +180,7 @@ class CompletenessRubric(Rubric):
         gt_issue: Dict
     ) -> bool:
         """Check if a ground truth issue was found by agent."""
-        # Match on issue type and description keywords
+                                                      
         agent_type = agent_finding.get('type', '').lower()
         gt_type = gt_issue.get('type', '').lower()
         
@@ -221,7 +221,7 @@ class SeverityRubric(Rubric):
             'ground_truth_issues', []
         )
         
-        # Severity mapping (for comparison)
+                                           
         severity_order = {'low': 0, 'medium': 1, 'high': 2, 'critical': 3}
         
         correct_severity = 0
@@ -231,13 +231,13 @@ class SeverityRubric(Rubric):
             agent_severity = agent_finding.get('severity', 'medium')
             agent_type = agent_finding.get('type', '')
             
-            # Find matching ground truth
+                                        
             for gt_issue in ground_truth:
                 if gt_issue.get('type', '') == agent_type:
                     total_severity_issues += 1
                     gt_severity = gt_issue.get('severity', 'medium')
                     
-                    # Exact match or within 1 level is acceptable
+                                                                 
                     diff = abs(
                         severity_order.get(agent_severity, 1) - 
                         severity_order.get(gt_severity, 1)
@@ -247,7 +247,7 @@ class SeverityRubric(Rubric):
                     break
         
         if total_severity_issues == 0:
-            return 1.0  # No severity-annotated issues
+            return 1.0                                
         
         score = correct_severity / total_severity_issues
         self.last_score = score
@@ -273,9 +273,9 @@ class DescriptionMatchRubric(Rubric):
         pr_info = getattr(observation, 'pr_info', {})
         expected_match = pr_info.get('description_match', True)
         
-        # Check if agent made a correct assessment
-        # This is simplified - real implementation would parse agent's text
-        agent_assessment_correct = True  # Placeholder
+                                                  
+                                                                           
+        agent_assessment_correct = True               
         
         score = 1.0 if agent_assessment_correct else 0.0
         self.last_score = score
@@ -283,10 +283,10 @@ class DescriptionMatchRubric(Rubric):
         return score * self.weight
 
 
-# =============================================================================
-# PART 2: COMPOSITE RUBRICS - Combine Multiple Criteria
-# =============================================================================
-# Composite rubrics combine leaf rubrics for full evaluation.
+                                                                               
+                                                       
+                                                                               
+                                                             
 
 class ReadabilityRubric(Rubric):
     """
@@ -299,7 +299,7 @@ class ReadabilityRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-        # Auto-register child rubrics (PyTorch nn.Module pattern)
+                                                                 
         self.correctness = CorrectnessRubric(weight=0.5)
         self.completeness = CompletenessRubric(weight=0.5)
     
@@ -315,10 +315,10 @@ class ReadabilityRubric(Rubric):
         c_score = self.correctness(action, observation)
         comp_score = self.completeness(action, observation)
         
-        # Weighted combination
+                              
         total = c_score + comp_score
         
-        return min(total, 1.0)  # Cap at 1.0
+        return min(total, 1.0)              
 
 
 class BugLogicRubric(Rubric):
@@ -380,19 +380,19 @@ class FullReviewRubric(Rubric):
         bug_score = self.bug_logic(action, observation)
         desc_score = self.description_match(action, observation)
         
-        # Weighted combination
+                              
         total = (
             read_score * 0.25 +
             bug_score * 0.35 +
-            desc_score * 0.40  # Security and description combined
+            desc_score * 0.40                                     
         )
         
         return min(total, 1.0)
 
 
-# =============================================================================
-# PART 3: RUBRIC FACTORY - Create rubric for any task
-# =============================================================================
+                                                                               
+                                                     
+                                                                               
 
 class RubricFactory:
     """
@@ -403,7 +403,7 @@ class RubricFactory:
     that returns the right rubric for the current task.
     """
     
-    # Map task IDs to rubric classes
+                                    
     RUBRIC_MAP = {
         "readability": ReadabilityRubric,
         "bug_logic": BugLogicRubric,
@@ -430,20 +430,20 @@ class RubricFactory:
         return rubric_class()
 
 
-# =============================================================================
-# EXPORTS
-# =============================================================================
+                                                                               
+         
+                                                                               
 
 __all__ = [
-    # Leaf rubrics
+                  
     "CorrectnessRubric",
     "CompletenessRubric", 
     "SeverityRubric",
     "DescriptionMatchRubric",
-    # Composite rubrics
+                       
     "ReadabilityRubric",
     "BugLogicRubric",
     "FullReviewRubric",
-    # Factory
+             
     "RubricFactory",
 ]
