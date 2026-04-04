@@ -1,0 +1,7 @@
+# Minimal deps for the HF Space / Docker server only (faster build, smaller image).
+openenv-core>=0.2.3
+fastapi>=0.100.0
+uvicorn[standard]>=0.23.0
+pydantic>=2.0.0
+python-multipart>=0.0.6
+websockets>=11.0.0

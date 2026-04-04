@@ -1,52 +1,30 @@
-
 from openenv.core.env_server import create_app
+from fastapi.responses import JSONResponse
 
-                                                                       
 from .code_review_env import CodeReviewEnvironment
 from models import CodeReviewAction, CodeReviewObservation, CodeReviewState
 
-                                
-                          
-                                                    
-                               
-                                        
-                                          
-
 app = create_app(
-                                               
-                                                  
     env=CodeReviewEnvironment,
-    
-                                 
-                                                   
     action_cls=CodeReviewAction,
-    
-                                      
-                                             
     observation_cls=CodeReviewObservation,
-    
-                                                  
     env_name="code_review_env",
 )
 
 
-                                                                               
-                            
-                                                                               
+@app.get("/")
+async def root():
+    """HF Space App tab loads `/` by default; OpenEnv API lives under documented routes."""
+    return JSONResponse(
+        {
+            "service": "code_review_env",
+            "openenv": True,
+            "health": "/health",
+            "reset": "POST /reset",
+            "docs": "/docs",
+        }
+    )
 
-                                              
-                                  
-                              
-                                   
-                            
-                                  
-                                                
-                                            
-                                         
-
-@app.get("/health")
-async def health_check():
-    return {"status": "healthy"}
 
 @app.get("/tasks")
 async def list_tasks():
