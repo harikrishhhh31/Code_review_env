@@ -2,6 +2,7 @@
 import uuid
 import random
 import re
+import copy
 from typing import Optional, Dict, Any, List
 from openenv.core.env_server.interfaces import Environment
 
@@ -29,10 +30,12 @@ class CodeReviewEnvironment(Environment):
                                 
     MAX_STEPS_PER_EPISODE = 10
     MAX_FINDINGS_PER_STEP = 7
+    _GLOBAL_TASK: Optional[Dict[str, Any]] = None
+    _GLOBAL_STATE: Optional[Dict[str, Any]] = None
     
                                                            
                                                                                
-    SUPPORTS_CONCURRENT_SESSIONS = True
+    SUPPORTS_CONCURRENT_SESSIONS = False
     
     def __init__(
         self,
@@ -111,6 +114,14 @@ class CodeReviewEnvironment(Environment):
         self._current_task["ground_truth_issues"] = issues
         self._state.ground_truth_issues = issues
         self._state.current_pr = self._current_task["pr_info"]
+
+        CodeReviewEnvironment._GLOBAL_TASK = copy.deepcopy(self._current_task)
+        CodeReviewEnvironment._GLOBAL_STATE = {
+            "task_id": self._state.task_id,
+            "task_index": self._state.task_index,
+            "step_count": self._state.step_count,
+            "total_reward": self._state.total_reward,
+        }
         
                             
         self._step_rewards = []
@@ -144,8 +155,6 @@ Please review this code and provide your findings.""",
             done=False,
             metadata={
                 "task_id": self._state.task_id,
-                "penalty_overflow": penalty_overflow,
-                "penalty_false_positives": penalty_false_positives,
                 "episode_id": new_episode_id,
             }
         )
@@ -163,11 +172,19 @@ Please review this code and provide your findings.""",
 
                                                       
         if self._current_task is None:
-            raise RuntimeError(
-                "Environment not initialized. Call reset() before step()."
-            )
-        
-                                
+            if CodeReviewEnvironment._GLOBAL_TASK is None:
+                raise RuntimeError(
+                    "Environment not initialized. Call reset() before step()."
+                )
+            self._current_task = copy.deepcopy(CodeReviewEnvironment._GLOBAL_TASK)
+            snapshot = CodeReviewEnvironment._GLOBAL_STATE or {}
+            self._state.task_id = snapshot.get("task_id", self._state.task_id)
+            self._state.task_index = snapshot.get("task_index", 0)
+            self._state.step_count = snapshot.get("step_count", 0)
+            self._state.total_reward = snapshot.get("total_reward", 0.0)
+            self._state.ground_truth_issues = self._current_task["ground_truth_issues"]
+            self._state.current_pr = self._current_task["pr_info"]
+
         sanitized_action, penalty_overflow = self._sanitize_action(action)
         self._state.agent_findings_history.extend(sanitized_action.findings)
         
@@ -196,6 +213,14 @@ Please review this code and provide your findings.""",
         self._step_rewards.append(reward)
         self._state.total_reward += reward
 
+        CodeReviewEnvironment._GLOBAL_TASK = copy.deepcopy(self._current_task)
+        CodeReviewEnvironment._GLOBAL_STATE = {
+            "task_id": self._state.task_id,
+            "task_index": self._state.task_index,
+            "step_count": self._state.step_count,
+            "total_reward": self._state.total_reward,
+        }
+
         feedback = self._generate_feedback(sanitized_action, reward, score_breakdown)
 
         observation = CodeReviewObservation(
@@ -209,9 +234,9 @@ Please review this code and provide your findings.""",
             metadata={
                 "step": self._state.step_count,
                 "max_steps": self._state.max_steps,
-                "task_id": self._state.task_id,
                 "penalty_overflow": penalty_overflow,
                 "penalty_false_positives": penalty_false_positives,
+                "task_id": self._state.task_id,
             }
         )
         
