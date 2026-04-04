@@ -162,7 +162,7 @@ observation:
 
 deployment:
   container:
-    port: 8000
+    port: 7860
     health_check_path: /health
     
   huggingface:
@@ -175,7 +175,7 @@ deployment:
       
       title: "CodeReviewEnv"
       description: "AI-powered code review environment"
-      emoji: "code_review"
+      emoji: "📝"
       color_from: "blue"
       color_to: "green"
 

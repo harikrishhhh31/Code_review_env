@@ -46,7 +46,7 @@ app = create_app(
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "healthy"}
 
 @app.get("/tasks")
 async def list_tasks():
@@ -78,7 +78,7 @@ async def list_tasks():
                                               
 @app.get("/tasks/{task_id}")
 async def get_task_info(task_id: str):
-    from tasks.task_data import get_task_by_id
+    from server.tasks.task_data import get_task_by_id
     
     try:
         task = get_task_by_id(task_id, index=0)
@@ -108,19 +108,19 @@ def _count_issues_by_type(issues):
                                                                                
 
 def main() -> None:
+    import os
+
     import uvicorn
 
-                    
-                                         
-                                                  
+    port = int(os.environ.get("PORT", "8000"))
     print("Starting CodeReviewEnv server...")
-    print("API docs available at: http://localhost:8000/docs")
+    print(f"API docs available at: http://localhost:{port}/docs")
 
     uvicorn.run(
-        "app:app",
+        "server.app:app",
         host="0.0.0.0",
-        port=8000,
-        reload=True                                           
+        port=port,
+        reload=True,
     )
 
 
