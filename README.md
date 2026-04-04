@@ -68,10 +68,10 @@ print(f"Feedback: {result.feedback}")
 env.close()
 ```
 
-### Run Baseline Inference
+### Run Baseline Inference (Optional)
 
 ```bash
-# Set OpenAI API key
+# Set OpenAI API key (required only for baseline script)
 export OPENAI_API_KEY=sk-...
 
 # Run baseline on all tasks
@@ -80,6 +80,8 @@ python baseline_inference.py
 # Run on specific task
 python baseline_inference.py --task readability --verbose
 ```
+
+Baseline inference is optional and does not affect environment validation or deployment.
 
 ## Tasks
 
