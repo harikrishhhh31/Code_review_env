@@ -179,18 +179,18 @@ docker run -p 8000:8000 code-review-env:latest
 
 ```
 code_review_env/
-├── __init__.py              # Package exports
-├── models.py                 # Typed models (Action, Observation, State)
-├── rubric.py                 # Grading system
-├── server/
-│   ├── app.py               # FastAPI server
-│   ├── code_review_env.py   # Environment class
-│   ├── Dockerfile           # Container image
-│   └── tasks/
-│       └── task_data.py     # Sample PRs for grading
-├── baseline_inference.py    # Baseline benchmark script
-├── openenv.yaml             # Environment manifest
-└── README.md                # This file
+|-- __init__.py
+|-- models.py
+|-- rubric.py
+|-- server/
+|   |-- app.py
+|   |-- code_review_env.py
+|   |-- Dockerfile
+|   |-- tasks/
+|       |-- task_data.py
+|-- baseline_inference.py
+|-- openenv.yaml
+|-- README.md
 ```
 
 ## Deployment
