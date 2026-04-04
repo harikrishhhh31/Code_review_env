@@ -171,7 +171,7 @@ deployment:
     hardware: "basic"  # or "cpu-basic", "cpu-upgrade", "t4-small"
     
     config:
-      app_port: 8000
+      app_port: 7860
       
       title: "CodeReviewEnv"
       description: "AI-powered code review environment"
