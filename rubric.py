@@ -1,6 +1,16 @@
 
 from typing import List, Dict, Any, Optional, Tuple
+import re
 from openenv.core.rubrics import Rubric
+
+def _location_match(agent_loc: str, gt_loc: str) -> bool:
+    if not agent_loc or not gt_loc:
+        return True
+    agent_tokens = [t for t in re.split(r"[^a-z0-9]+", agent_loc) if t]
+    gt_tokens = [t for t in re.split(r"[^a-z0-9]+", gt_loc) if t]
+    if not agent_tokens or not gt_tokens:
+        return True
+    return len(set(agent_tokens) & set(gt_tokens)) > 0
 
 
                                                                                
@@ -51,7 +61,6 @@ class CorrectnessRubric(Rubric):
         agent_finding: Dict, 
         gt_issue: Dict
     ) -> bool:
-                            
         agent_type = agent_finding.get('type', '').lower()
         gt_type = gt_issue.get('type', '').lower()
         
@@ -60,15 +69,19 @@ class CorrectnessRubric(Rubric):
         
                           
         type_match = agent_type == gt_type
-        
-                                                      
+
         desc_match = (
             gt_desc in agent_desc or 
             agent_desc in gt_desc or
             any(word in agent_desc for word in gt_desc.split() if len(word) > 4)
         )
-        
-        return type_match and desc_match
+
+        if not (type_match and desc_match):
+            return False
+
+        agent_loc = str(agent_finding.get('location', '')).lower()
+        gt_loc = str(gt_issue.get('location', '')).lower()
+        return _location_match(agent_loc, gt_loc)
 
 
 class CompletenessRubric(Rubric):
@@ -119,8 +132,13 @@ class CompletenessRubric(Rubric):
             for word in gt_desc.split() 
             if len(word) > 4
         )
-        
-        return type_match and desc_match
+
+        if not (type_match and desc_match):
+            return False
+
+        agent_loc = str(agent_finding.get('location', '')).lower()
+        gt_loc = str(gt_issue.get('location', '')).lower()
+        return _location_match(agent_loc, gt_loc)
 
 
 class SeverityRubric(Rubric):

@@ -952,17 +952,17 @@ def get_task_by_id(task_id: str, index: int = 0) -> dict:
     }
 
 
-def get_random_task(difficulty: Optional[str] = None) -> dict:
+def get_random_task(difficulty: Optional[str] = None, seed: Optional[int] = None) -> dict:
     import random
-    
+    rng = random.Random(seed)
     if difficulty == "easy":
-        task_data = random.choice(EASY_TASKS)
+        task_data = rng.choice(EASY_TASKS)
     elif difficulty == "medium":
-        task_data = random.choice(MEDIUM_TASKS)
+        task_data = rng.choice(MEDIUM_TASKS)
     elif difficulty == "hard":
-        task_data = random.choice(HARD_TASKS)
+        task_data = rng.choice(HARD_TASKS)
     else:
-        task_data = random.choice(ALL_TASKS)
+        task_data = rng.choice(ALL_TASKS)
     
     issues = task_data["pr"]["issues"]
     description_match = not any(

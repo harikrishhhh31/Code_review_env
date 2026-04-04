@@ -1,5 +1,7 @@
 
 import uuid
+import random
+import re
 from typing import Optional, Dict, Any, List
 from openenv.core.env_server.interfaces import Environment
 
@@ -26,6 +28,7 @@ class CodeReviewEnvironment(Environment):
                                                
                                 
     MAX_STEPS_PER_EPISODE = 10
+    MAX_FINDINGS_PER_STEP = 7
     
                                                            
                                                                                
@@ -72,7 +75,7 @@ class CodeReviewEnvironment(Environment):
         seed: Optional[int] = None,
         episode_id: Optional[str] = None,
         task_id: Optional[str] = None,
-        task_index: int = 0,
+        task_index: Optional[int] = 0,
         **kwargs
     ) -> CodeReviewObservation:
                                                  
@@ -85,20 +88,28 @@ class CodeReviewEnvironment(Environment):
             self._rubric = RubricFactory.create(task_id)
         
                                             
-        self._current_task = get_task_by_id(
-            self._state.task_id,
-            task_index
-        )
+        if task_index is None:
+            self._current_task = get_random_task(
+                difficulty=self._state.task_id,
+                seed=seed
+            )
+        else:
+            self._current_task = get_task_by_id(
+                self._state.task_id,
+                task_index
+            )
         
                      
         self._state.episode_id = new_episode_id
         self._state.step_count = 0
-        self._state.task_index = task_index
+        self._state.task_index = task_index or 0
         self._state.total_reward = 0.0
         self._state.agent_findings_history = []
-        self._state.ground_truth_issues = (
-            self._current_task["ground_truth_issues"]
-        )
+        issues = list(self._current_task["ground_truth_issues"])
+        rng = random.Random(seed or uuid.uuid4().int)
+        rng.shuffle(issues)
+        self._current_task["ground_truth_issues"] = issues
+        self._state.ground_truth_issues = issues
         self._state.current_pr = self._current_task["pr_info"]
         
                             
@@ -133,6 +144,8 @@ Please review this code and provide your findings.""",
             done=False,
             metadata={
                 "task_id": self._state.task_id,
+                "penalty_overflow": penalty_overflow,
+                "penalty_false_positives": penalty_false_positives,
                 "episode_id": new_episode_id,
             }
         )
@@ -155,7 +168,8 @@ Please review this code and provide your findings.""",
             )
         
                                 
-        self._state.agent_findings_history.extend(action.findings)
+        sanitized_action, penalty_overflow = self._sanitize_action(action)
+        self._state.agent_findings_history.extend(sanitized_action.findings)
         
                                         
                                                       
@@ -168,25 +182,22 @@ Please review this code and provide your findings.""",
         
                                        
                                           
-        reward = self._rubric(action, grading_observation)
-        
-                            
+        reward = self._rubric(sanitized_action, grading_observation)
+
+        score_breakdown = self._compute_score_breakdown(sanitized_action)
+
+        is_done = self._check_episode_done()
+
+        findings_graded = self._grade_findings(sanitized_action)
+        penalty_false_positives = self._false_positive_penalty(findings_graded)
+        reward = reward + penalty_overflow + penalty_false_positives
+        reward = max(min(reward, 1.0), -1.0)
+
         self._step_rewards.append(reward)
         self._state.total_reward += reward
-        
-                                   
-        score_breakdown = self._compute_score_breakdown(action)
-        
-                                      
-        is_done = self._check_episode_done()
-        
-                                  
-        feedback = self._generate_feedback(action, reward, score_breakdown)
-        
-                                   
-        findings_graded = self._grade_findings(action)
-        
-                                  
+
+        feedback = self._generate_feedback(sanitized_action, reward, score_breakdown)
+
         observation = CodeReviewObservation(
             pr_info=self._current_task["pr_info"],
             feedback=feedback,
@@ -199,6 +210,8 @@ Please review this code and provide your findings.""",
                 "step": self._state.step_count,
                 "max_steps": self._state.max_steps,
                 "task_id": self._state.task_id,
+                "penalty_overflow": penalty_overflow,
+                "penalty_false_positives": penalty_false_positives,
             }
         )
         
@@ -319,19 +332,30 @@ Please review this code and provide your findings.""",
         finding: Dict[str, Any],
         gt_issue: Dict[str, Any]
     ) -> bool:
-                       
         if finding.get("type") != gt_issue.get("type"):
             return False
         
-                                       
         finding_desc = finding.get("description", "").lower()
         gt_desc = gt_issue.get("description", "").lower()
         
-                                   
         gt_words = [w for w in gt_desc.split() if len(w) > 4]
         matches = sum(1 for w in gt_words if w in finding_desc)
+        if matches < 1:
+            return False
         
-        return matches >= 1                                 
+        agent_loc = str(finding.get("location", "")).lower()
+        gt_loc = str(gt_issue.get("location", "")).lower()
+        return self._location_match(agent_loc, gt_loc)
+
+    def _location_match(self, agent_loc: str, gt_loc: str) -> bool:
+        if not agent_loc or not gt_loc:
+            return True
+        agent_tokens = [t for t in re.split(r"[^a-z0-9]+", agent_loc) if t]
+        gt_tokens = [t for t in re.split(r"[^a-z0-9]+", gt_loc) if t]
+        if not agent_tokens or not gt_tokens:
+            return True
+        overlap = set(agent_tokens) & set(gt_tokens)
+        return len(overlap) > 0
     
     def _generate_feedback(
         self,
@@ -372,6 +396,29 @@ Please review this code and provide your findings.""",
             feedback_lines.append(f"Episode complete! Final score: {self._state.total_reward:.2f}")
         
         return "\n".join(feedback_lines)
+
+    def _sanitize_action(
+        self,
+        action: CodeReviewAction
+    ) -> tuple[CodeReviewAction, float]:
+        findings = action.findings
+        if len(findings) <= self.MAX_FINDINGS_PER_STEP:
+            return action, 0.0
+        trimmed = findings[: self.MAX_FINDINGS_PER_STEP]
+        overflow = len(findings) - self.MAX_FINDINGS_PER_STEP
+        penalty = min(0.05 * overflow, 0.3) * -1.0
+        new_action = action.model_copy(update={"findings": trimmed})
+        return new_action, penalty
+
+    def _false_positive_penalty(
+        self,
+        findings_graded: List[Dict[str, Any]]
+    ) -> float:
+        false_positives = sum(1 for f in findings_graded if not f.get("correct"))
+        if false_positives == 0:
+            return 0.0
+        penalty = min(0.05 * false_positives, 0.3) * -1.0
+        return penalty
 
 
                                                                                
