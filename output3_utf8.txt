@@ -1,0 +1,7 @@
+﻿Connecting to environment on Hugging Face Space: harikrishhhh/code-review-env...
+
+--- 1. Resetting Environment ('readability' task) ---
+
+[Error] Error communicating with Hugging Face Space: Failed to connect to wss://huggingface.co/spaces/harikrishhhh/code-review-env/ws: server rejected WebSocket connection: HTTP 404
+Note: If you just deployed, it might take a few minutes for the Space container to build and boot up.
+Check the Space logs on Hugging Face for more details.

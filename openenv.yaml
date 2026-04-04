@@ -189,7 +189,7 @@ validation:
     - server/Dockerfile
     - openenv.yaml
     - README.md
-    - baseline_inference.py
+    - inference.py
     
   min_tasks: 3
   

@@ -75,10 +75,10 @@ env.close()
 export OPENAI_API_KEY=sk-...
 
 # Run baseline on all tasks
-python baseline_inference.py
+python inference.py
 
 # Run on specific task
-python baseline_inference.py --task readability --verbose
+python inference.py --task readability --verbose
 ```
 
 Baseline inference is optional and does not affect environment validation or deployment.
@@ -188,7 +188,7 @@ code_review_env/
 |   |-- Dockerfile
 |   |-- tasks/
 |       |-- task_data.py
-|-- baseline_inference.py
+|-- inference.py
 |-- openenv.yaml
 |-- README.md
 ```
