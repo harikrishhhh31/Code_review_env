@@ -44,8 +44,10 @@ app = create_app(
                                             
                                          
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
-                                                            
 @app.get("/tasks")
 async def list_tasks():
     return {

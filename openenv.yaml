@@ -186,7 +186,7 @@ validation:
     - rubric.py
     - server/code_review_env.py
     - server/app.py
-    - server/Dockerfile
+    - Dockerfile
     - openenv.yaml
     - README.md
     - inference.py
