@@ -1,29 +1,3 @@
-"""
-code_review_env.py - Core Environment Class for CodeReviewEnv
-=============================================================
-
-This is the HEART of the RL environment. It implements the three essential methods:
-1. reset() - Start a new episode
-2. step() - Take an action and get feedback
-3. state - Get current state (property)
-
-LEARNING: What is an Environment in RL?
-Think of an environment as a "game world" where the agent operates.
-- The agent sees the environment's state (observation)
-- The agent takes actions
-- The environment responds with new observation + reward
-- This loop continues until the episode ends
-
-The OpenEnv Environment class is similar to OpenAI's Gymnasium Environment,
-but with typed models and server/client architecture.
-
-CORE CONCEPTS:
-1. Episode: One complete task (from reset to done)
-2. Step: One action taken by the agent
-3. Observation: What the agent perceives
-4. Reward: Feedback signal for learning
-5. State: Internal tracking (hidden from agent)
-"""
 
 import uuid
 from typing import Optional, Dict, Any, List
@@ -48,30 +22,6 @@ from .tasks.task_data import get_task_by_id, get_random_task
                                                                                
 
 class CodeReviewEnvironment(Environment):
-    """
-    Core RL Environment for Code Review tasks.
-    
-    This class manages:
-    - Episode lifecycle (reset → step → done)
-    - State tracking (hidden from agent)
-    - Reward computation (via rubrics)
-    - Task management (easy/medium/hard)
-    
-    LEARNING: The Environment is NOT the agent!
-    - Environment: The "world" the agent operates in
-    - Agent: The AI that makes decisions
-    
-    Think of it like:
-    - Environment = The game/rules
-    - Agent = The player
-    
-    USAGE:
-        env = CodeReviewEnvironment()
-        obs = env.reset()           # Start new episode
-        obs = env.step(action)      # Take action
-        state = env.state           # Get current state
-        env.close()                 # Clean up
-    """
     
                                                
                                 
@@ -87,15 +37,6 @@ class CodeReviewEnvironment(Environment):
         task_index: int = 0,
         seed: Optional[int] = None
     ):
-        """
-        Initialize the environment.
-        
-        Args:
-            task_id: Which task to use ('readability', 'bug_logic', 'full_review')
-                    If None, will be set during reset()
-            task_index: Which PR in the task pool to use (for variety)
-            seed: Random seed for reproducibility
-        """
                                                
         super().__init__()
         
@@ -124,18 +65,6 @@ class CodeReviewEnvironment(Environment):
     
     @property
     def state(self) -> CodeReviewState:
-        """
-        Get current environment state.
-        
-        IMPORTANT: State is INTERNAL - the agent shouldn't see this!
-        This is used by:
-        - The server to track episode progress
-        - Grading systems to evaluate performance
-        - Debugging when something goes wrong
-        
-        Returns:
-            Current CodeReviewState
-        """
         return self._state
     
     def reset(
@@ -146,33 +75,6 @@ class CodeReviewEnvironment(Environment):
         task_index: int = 0,
         **kwargs
     ) -> CodeReviewObservation:
-        """
-        Reset the environment to start a new episode.
-        
-        RESET is called at the beginning of EVERY episode.
-        Think of it as: "Starting a new game"
-        
-        What happens during reset:
-        1. Generate new episode ID
-        2. Load a new task (Pull Request to review)
-        3. Initialize step counter
-        4. Return initial observation to agent
-        
-        Args:
-            seed: Random seed for reproducibility
-            episode_id: Optional custom episode ID
-            task_id: Which task type ('readability', 'bug_logic', 'full_review')
-            task_index: Which PR in the pool (0 = first)
-            **kwargs: Additional arguments (ignored)
-        
-        Returns:
-            Initial observation (what the agent sees first)
-        
-        LEARNING: Why is reset important?
-        - Ensures each episode starts fresh
-        - Provides the first observation (agent sees PR to review)
-        - Sets up ground truth for grading
-        """
                                                  
         new_episode_id = episode_id or str(uuid.uuid4())
         
@@ -243,47 +145,6 @@ Please review this code and provide your findings.""",
         timeout_s: Optional[float] = None,
         **kwargs
     ) -> CodeReviewObservation:
-        """
-        Take a step (action) in the environment.
-        
-        STEP is called for every action the agent takes.
-        This is the core RL loop: observe → act → feedback
-        
-        What happens during step:
-        1. Increment step counter
-        2. Process agent's action (code review)
-        3. Grade the action using rubric
-        4. Compute reward
-        5. Check if episode is done
-        6. Return observation with feedback
-        
-        Args:
-            action: The agent's action (CodeReviewAction with review findings)
-            timeout_s: Optional timeout (ignored, for API compatibility)
-            **kwargs: Additional arguments (ignored)
-        
-        Returns:
-            Observation with feedback and reward
-        
-        LEARNING: The RL Step Loop
-        ┌─────────────────────────────────────┐
-        │ Observation → Agent Decision → Action │
-        └─────────────────────────────────────┘
-                     ↓
-        ┌─────────────────────────────────────┐
-        │  Environment: Grade + Reward → New   │
-        │  Observation + Feedback              │
-        └─────────────────────────────────────┘
-                     ↓
-        Loop back to agent
-        
-        REWARD DESIGN:
-        We use DENSE rewards (reward at each step) not SPARSE rewards.
-        Dense rewards help the agent learn faster because:
-        - Immediate feedback: Agent knows if action was good
-        - Credit assignment: Easier to link reward to action
-        - Gradient signal: More frequent = better learning
-        """
                                 
         self._state.step_count += 1
 
@@ -344,36 +205,11 @@ Please review this code and provide your findings.""",
         return observation
     
     def close(self) -> None:
-        """
-        Clean up resources when environment is destroyed.
-        
-        Called when:
-        - Episode ends and environment is closed
-        - Server shuts down
-        - Cleanup is needed
-        
-        Override this if your environment uses:
-        - Database connections
-        - File handles
-        - Network connections
-        - GPU resources
-        """
                                                              
                                               
         pass
     
     def get_metadata(self) -> Dict[str, Any]:
-        """
-        Get metadata about this environment.
-        
-        Used by:
-        - Documentation generation
-        - API responses
-        - Environment registry
-        
-        Returns:
-            Dictionary with environment metadata
-        """
         return {
             "name": "CodeReviewEnv",
             "version": "1.0.0",
@@ -387,7 +223,6 @@ Please review this code and provide your findings.""",
                                                                                
     
     def _get_task_description(self) -> str:
-        """Get description of current task."""
         descriptions = {
             "readability": "Readability Review - Identify code style and clarity issues",
             "bug_logic": "Bug & Logic Review - Find logic errors and bugs",
@@ -399,16 +234,6 @@ Please review this code and provide your findings.""",
         )
     
     def _check_episode_done(self) -> bool:
-        """
-        Check if the current episode should end.
-        
-        Episode ends when:
-        1. Agent has taken maximum steps (max_steps reached)
-        2. OR agent explicitly indicates done
-        
-        Returns:
-            True if episode should end
-        """
                          
         if self._state.step_count >= self._state.max_steps:
             return True
@@ -419,17 +244,6 @@ Please review this code and provide your findings.""",
         self,
         action: CodeReviewAction
     ) -> Dict[str, float]:
-        """
-        Calculate detailed score breakdown by category.
-        
-        This helps the agent understand:
-        - How well did it find readability issues?
-        - How well did it find logic bugs?
-        - How well did it find security issues?
-        
-        Returns:
-            Dictionary with scores for each category
-        """
         if self._current_task is None:
             return {}
 
@@ -465,16 +279,6 @@ Please review this code and provide your findings.""",
         return breakdown
     
     def _grade_findings(self, action: CodeReviewAction) -> List[Dict[str, Any]]:
-        """
-        Grade each individual finding the agent made.
-        
-        For each finding, we check:
-        - Is it a true positive? (found a real issue)
-        - Is it a false positive? (imagined issue)
-        
-        Returns:
-            List of findings with correctness evaluation
-        """
         if self._current_task is None:
             return []
 
@@ -515,7 +319,6 @@ Please review this code and provide your findings.""",
         finding: Dict[str, Any],
         gt_issue: Dict[str, Any]
     ) -> bool:
-        """Check if agent finding matches ground truth issue."""
                        
         if finding.get("type") != gt_issue.get("type"):
             return False
@@ -536,14 +339,6 @@ Please review this code and provide your findings.""",
         reward: float,
         score_breakdown: Dict[str, float]
     ) -> str:
-        """
-        Generate human-readable feedback for the agent.
-        
-        Good feedback helps the agent learn faster!
-        
-        Returns:
-            Feedback string
-        """
                                 
         findings = action.findings
         by_type = {}

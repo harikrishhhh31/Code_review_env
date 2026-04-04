@@ -1,28 +1,3 @@
-"""
-tasks/task_data.py - Sample Pull Requests for Code Review Tasks
-===============================================================
-
-This file contains SYNTHETIC data - fake PRs that we created ourselves.
-We don't need real GitHub PRs because:
-1. We control ground truth (know exactly what issues exist)
-2. Reproducible every time
-3. No IP/legal concerns
-4. Can design for specific difficulty levels
-
-LEARNING: Why Synthetic Data for RL?
-In RL training, you want:
-- Consistent evaluation (same PR = same answer needed)
-- Known ground truth (we know what agent SHOULD find)
-- Controllable difficulty (can make exactly easy/medium/hard)
-
-Real data is messy - you'd need experts to annotate ground truth.
-Synthetic data is clean - we define ground truth ourselves!
-
-Each task has:
-- pr_info: What the agent sees (code, title, description)
-- ground_truth: What issues EXIST (hidden from agent)
-- expected_findings: What agent SHOULD identify
-"""
 
                                                                                
          
@@ -949,16 +924,6 @@ ALL_TASKS = EASY_TASKS + MEDIUM_TASKS + HARD_TASKS
                                                                                
 
 def get_task_by_id(task_id: str, index: int = 0) -> dict:
-    """
-    Get a specific task by difficulty level.
-    
-    Args:
-        task_id: One of 'readability', 'bug_logic', 'full_review'
-        index: Which PR in that pool (for variety)
-    
-    Returns:
-        Task dictionary with pr_info and ground_truth
-    """
     pools = {
         "readability": TASK1_PR_POOL,
         "bug_logic": TASK2_PR_POOL,
@@ -988,15 +953,6 @@ def get_task_by_id(task_id: str, index: int = 0) -> dict:
 
 
 def get_random_task(difficulty: Optional[str] = None) -> dict:
-    """
-    Get a random task, optionally filtered by difficulty.
-    
-    Args:
-        difficulty: 'easy', 'medium', 'hard', or None for random
-    
-    Returns:
-        Random task dictionary
-    """
     import random
     
     if difficulty == "easy":

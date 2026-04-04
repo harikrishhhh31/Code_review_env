@@ -1,38 +1,4 @@
                       
-"""
-baseline_inference.py - Reproducible Baseline for CodeReviewEnv
-==============================================================
-
-This script runs a baseline agent against all tasks to produce
-reproducible benchmark scores.
-
-USAGE:
-    # Set your OpenAI API key
-    export OPENAI_API_KEY=sk-...
-    
-    # Run baseline on all tasks
-    python baseline_inference.py
-    
-    # Run on specific task
-    python baseline_inference.py --task readability
-    
-    # Use different model
-    python baseline_inference.py --model gpt-3.5-turbo
-
-LEARNING: What is a Baseline?
-A baseline is a "reference implementation" that:
-1. Shows how to use the environment
-2. Provides a reproducible score
-3. Helps compare different agents
-4. Validates the environment works
-
-Judges will run this script to verify your environment works!
-
-BASELINE AGENT:
-This baseline uses GPT-4 to do code review.
-It's NOT expected to be perfect - it's a REASONABLE attempt.
-Real agents you train will hopefully do better!
-"""
 
 import os
 import json
@@ -71,18 +37,6 @@ DEFAULT_MAX_TOKENS = 1000
                                                                                
 
 class BaselineAgent:
-    """
-    Simple baseline agent that uses GPT-4 for code review.
-    
-    This agent:
-    1. Reads the PR information
-    2. Asks GPT-4 to review the code
-    3. Parses the response into structured findings
-    4. Submits findings to the environment
-    
-    NOTE: This is a SIMPLE baseline, not state-of-the-art!
-    The goal is to show the environment works, not to get perfect scores.
-    """
     
     SYSTEM_PROMPT = """You are an expert code reviewer. Your job is to:
 1. Analyze code for issues
@@ -92,13 +46,6 @@ class BaselineAgent:
 Be thorough but accurate. Only report issues you are confident about."""
 
     def __init__(self, model: str = DEFAULT_MODEL, api_key: Optional[str] = None):
-        """
-        Initialize the baseline agent.
-        
-        Args:
-            model: OpenAI model to use
-            api_key: OpenAI API key (reads from env if not provided)
-        """
         self.model = model
         
                                                    
@@ -116,19 +63,6 @@ Be thorough but accurate. Only report issues you are confident about."""
         language: str,
         task_type: str
     ) -> Dict[str, Any]:
-        """
-        Have the model review code and return findings.
-        
-        Args:
-            pr_title: Title of the PR
-            pr_description: Description of what PR does
-            code: Source code to review
-            language: Programming language
-            task_type: Type of review (readability, bug_logic, full_review)
-        
-        Returns:
-            Dictionary with review_text and findings
-        """
                                     
         if task_type == "readability":
             focus = "focus on readability and style issues"
@@ -183,18 +117,6 @@ Be specific and only report issues you are confident about."""
         }
     
     def _parse_findings(self, review_text: str) -> List[Dict[str, Any]]:
-        """
-        Parse structured findings from review text.
-        
-        This is a simple heuristic parser - not perfect!
-        Real agents would use more sophisticated methods.
-        
-        Args:
-            review_text: Raw review text from model
-        
-        Returns:
-            List of finding dictionaries
-        """
         findings = []
         
                                          
@@ -273,7 +195,6 @@ Be specific and only report issues you are confident about."""
         return findings[:10]                        
     
     def _extract_value(self, line: str, field: str) -> str:
-        """Extract value after field name in a line."""
         line_lower = line.lower()
         
                                         
@@ -302,18 +223,6 @@ def run_task(
     task_index: int = 0,
     verbose: bool = True
 ) -> Dict[str, Any]:
-    """
-    Run baseline agent on a single task.
-    
-    Args:
-        agent: The baseline agent to use
-        task_id: Which task to run
-        task_index: Which PR in the pool (for variety)
-        verbose: Print progress
-    
-    Returns:
-        Dictionary with results
-    """
     if verbose:
         print(f"\n{'='*60}")
         print(f"Running task: {task_id} (index: {task_index})")
@@ -385,12 +294,6 @@ def run_all_tasks(
     agent: BaselineAgent,
     verbose: bool = True
 ) -> Dict[str, Any]:
-    """
-    Run baseline agent on all tasks.
-    
-    Returns:
-        Dictionary with results for all tasks
-    """
     tasks = ["readability", "bug_logic", "full_review"]
     results = []
     
@@ -418,7 +321,6 @@ def run_all_tasks(
                                                                                
 
 def main():
-    """Main entry point."""
     parser = argparse.ArgumentParser(
         description="Run baseline inference on CodeReviewEnv"
     )

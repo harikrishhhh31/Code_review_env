@@ -1,6 +1,3 @@
-"""
-tasks package - Task definitions and sample data
-"""
 
 from .task_data import (
     TASK1_PR_POOL,

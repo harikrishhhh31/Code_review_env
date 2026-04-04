@@ -1,22 +1,3 @@
-"""
-models.py - Typed Data Models for CodeReviewEnv
-================================================
-
-This file defines the core data structures used in our RL environment.
-In OpenEnv, we use Pydantic models (like dataclasses but with validation)
-to ensure type safety across the agent-environment interface.
-
-LEARNING: Why Typed Models?
-- Prevents bugs from wrong data types
-- Self-documenting code (Field descriptions serve as documentation)
-- Automatic validation (if someone passes wrong type, Python errors immediately)
-- JSON serialization for API communication
-
-OpenEnv uses three main model types:
-1. Action - What the agent CAN do (inputs)
-2. Observation - What the agent SEES (outputs)
-3. State - Internal environment state (hidden from agent)
-"""
 
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import Field
@@ -33,23 +14,6 @@ from openenv.core.env_server.types import Action, Observation, State
                                                           
 
 class CodeReviewAction(Action):
-    """
-    Action: Submit a code review for a given PR
-    
-    What is an Action in RL?
-    - Actions are the "choices" an agent can make
-    - In our case: the agent reviews code and submits findings
-    - Each action triggers the environment to respond with an observation
-    
-    LEARNING: This class inherits from Action, which gives us:
-    - metadata field (for debugging/logging)
-    - Automatic validation via Pydantic
-    
-    Fields explained:
-    - review_text: The actual code review content the agent writes
-    - findings: Structured list of issues found (easier to grade)
-    - confidence: How confident the agent is (0.0 to 1.0)
-    """
     
                                                                  
     review_text: str = Field(
@@ -93,27 +57,6 @@ class CodeReviewAction(Action):
                                                        
 
 class CodeReviewObservation(Observation):
-    """
-    Observation: What the agent perceives after taking an action
-    
-    What is an Observation in RL?
-    - The environment "observes" the result of an action
-    - The agent sees this observation to decide its next action
-    - Contains everything the agent needs to make good decisions
-    
-    LEARNING: The observation should contain:
-    - Current state information (what's happening)
-    - Feedback about the last action (was it good?)
-    - Whether the task is done (episode ended)
-    
-    Fields explained:
-    - pr_info: The PR context (title, description, code)
-    - feedback: Text feedback from the environment
-    - score_breakdown: Detailed scoring (helps agent learn)
-    - findings_graded: Which of agent's findings were correct
-    - reward: Numeric reward signal (this is KEY for RL)
-    - done: Whether episode is complete
-    """
     
                                                        
     pr_info: Dict[str, Any] = Field(
@@ -195,24 +138,6 @@ class CodeReviewObservation(Observation):
                                                              
 
 class CodeReviewState(State):
-    """
-    State: Internal environment state (hidden from agent)
-    
-    What is State in RL?
-    - The environment maintains internal state
-    - This tracks everything happening "behind the scenes"
-    - Agent doesn't see this directly (would be cheating!)
-    - Used for grading and reproducibility
-    
-    LEARNING: State vs Observation
-    - State: Internal truth (what we use to grade the agent)
-    - Observation: What the agent actually perceives
-    
-    Example:
-    - State might contain: "the bug is on line 42"
-    - Observation might contain: "there's an error in the code"
-    - The agent doesn't know the exact location - has to figure it out!
-    """
     
                                         
     episode_id: str = Field(
@@ -281,12 +206,6 @@ class CodeReviewState(State):
                                                                                
 
 class Finding:
-    """
-    Helper class for creating structured findings
-    
-    This isn't a Pydantic model (just a simple class) because
-    it's used internally to construct Action findings.
-    """
     
                        
     ISSUE_TYPES = ["readability", "logic", "security", "other"]
@@ -302,19 +221,6 @@ class Finding:
         severity: str = "medium",
         suggestion: str = ""
     ) -> Dict[str, Any]:
-        """
-        Create a structured finding dictionary.
-        
-        Args:
-            issue_type: Type of issue (readability, logic, security, other)
-            location: Where in the code (e.g., "line 5", "function foo")
-            description: What's wrong
-            severity: How serious (low, medium, high, critical)
-            suggestion: How to fix (optional)
-        
-        Returns:
-            Dictionary with the finding details
-        """
                          
         if issue_type not in Finding.ISSUE_TYPES:
             raise ValueError(f"Invalid issue_type: {issue_type}")
