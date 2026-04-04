@@ -137,9 +137,6 @@ secrets.json
 .cache/
 .huggingface/
 
-.dockerignore
-
-
 pip-log.txt
 
 .uv/
