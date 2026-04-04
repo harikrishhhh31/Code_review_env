@@ -15,9 +15,9 @@ from client import CodeReviewEnvFactory
 from models import CodeReviewAction
 
 # --- CONFIGURATION VARIABLES REQUIRED BY HACKATHON ---
-IMAGE_NAME = os.getenv("IMAGE_NAME") 
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or os.environ.get("OPENAI_API_KEY")
-API_BASE_URL = os.getenv("API_BASE_URL") or "https://router.huggingface.co/v1"
+LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
+API_KEY = os.getenv("HF_TOKEN") or os.environ.get("OPENAI_API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 BENCHMARK = "code_review_env"
 
@@ -201,8 +201,8 @@ async def main() -> None:
     client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
     
     # We must use from_docker_image if available to test external connectivity, else fallback directly!
-    if IMAGE_NAME:
-        env = CodeReviewEnvFactory.from_docker_image(IMAGE_NAME)
+    if LOCAL_IMAGE_NAME:
+        env = CodeReviewEnvFactory.from_docker_image(LOCAL_IMAGE_NAME)
     else:
         # Fallback to localhost if testing actively without IMAGE_NAME flag
         env = CodeReviewEnvFactory.from_docker_image("local")
