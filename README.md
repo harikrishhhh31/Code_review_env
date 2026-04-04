@@ -1,6 +1,6 @@
 ---
 title: CodeReviewEnv
-emoji: memo
+emoji: 📝
 colorFrom: blue
 colorTo: green
 sdk: docker
