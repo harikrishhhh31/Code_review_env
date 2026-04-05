@@ -90,15 +90,15 @@ def main() -> None:
 
     import uvicorn
 
-    port = int(os.environ.get("PORT", "8000"))
-    print("Starting CodeReviewEnv server...")
-    print(f"API docs available at: http://localhost:{port}/docs")
+    port = int(os.environ.get("PORT", "7860"))
+    print(f"Starting CodeReviewEnv server on port {port}...")
+    print(f"API docs available at: http://0.0.0.0:{port}/docs")
 
     uvicorn.run(
         "server.app:app",
         host="0.0.0.0",
         port=port,
-        reload=True,
+        reload=False,
     )
 
 
