@@ -1,7 +1,10 @@
-# Minimal deps for the HF Space / Docker server only (faster build, smaller image).
+# Server deps for HF Space Docker container
+# Keep openenv-core but install gradio separately to avoid heavy transitive deps
 openenv-core>=0.2.3
 fastapi>=0.100.0
 uvicorn[standard]>=0.23.0
 pydantic>=2.0.0
 python-multipart>=0.0.6
 websockets>=11.0.0
+# Gradio is required by openenv-core at import time
+gradio>=4.0.0,<5.0.0
