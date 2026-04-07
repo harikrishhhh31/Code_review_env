@@ -1,226 +1,191 @@
 import asyncio
 import os
-import json
-import textwrap
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List, Optional
 
-try:
-    from openai import OpenAI
-except ImportError:
-    print("ERROR: OpenAI package not installed")
-    exit(1)
+from openai import OpenAI
 
-# Import the CLIENT to interact over http/docker, not the local backend classes!
 from client import CodeReviewEnvFactory
 from models import CodeReviewAction
 
-# --- CONFIGURATION VARIABLES REQUIRED BY HACKATHON ---
-LOCAL_IMAGE_NAME = os.getenv("LOCAL_IMAGE_NAME")
-API_KEY = os.getenv("HF_TOKEN") or os.environ.get("OPENAI_API_KEY")
+# --- REQUIRED ENV VARS (per hackathon rules) ---
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-BENCHMARK = "code_review_env"
+HF_TOKEN = os.getenv("HF_TOKEN")
 
+BENCHMARK = "code_review_env"
+TASKS = ["readability", "bug_logic", "full_review"]
 MAX_STEPS = 5
 
-SYSTEM_PROMPT = """You are an expert code reviewer. Your job is to:
-1. Analyze code for issues
-2. Identify bugs, security problems, and readability issues
-3. Provide structured feedback.
-
-Be specific and format your response in two parts:
-1. SUMMARY: A brief overview
-2. FINDINGS: List of issues.
-For each finding, list:
-- Type: (readability/logic/security)
-- Severity: (low/medium/high/critical)
-- Location: (line numbers or function name)
-- Description: (what's wrong)
-- Suggestion: (how to fix it)"""
+SYSTEM_PROMPT = (
+    "You are an expert code reviewer. Identify issues and propose fixes. "
+    "Return clear, structured findings."
+)
 
 
-def log_start(task: str, env: str, model: str) -> None:
-    print(f"[START] task={task} env={env} model={model}", flush=True)
+def _bool(v: bool) -> str:
+    return "true" if v else "false"
 
 
-def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
-    error_val = error if error else "null"
-    done_val = str(done).lower()
+def _log_start(task: str) -> None:
+    print(f"[START] task={task} env={BENCHMARK} model={MODEL_NAME}", flush=True)
+
+
+def _log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
+    err = error if error is not None and error != "" else "null"
     print(
-        f"[STEP] step={step} action={action} reward={reward:.2f} done={done_val} error={error_val}",
+        f"[STEP] step={step} action={action} reward={reward:.2f} done={_bool(done)} error={err}",
         flush=True,
     )
 
 
-def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
+def _log_end(success: bool, steps: int, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}", flush=True)
+    print(f"[END] success={_bool(success)} steps={steps} rewards={rewards_str}", flush=True)
 
 
-def ReviewAgent_parse(review_text: str) -> List[Dict[str, Any]]:
-    findings = []
-    lines = review_text.split("\n")
-    current_finding = None
-    
-    def extract_val(l, field):
-        idx = l.lower().find(field + ":")
-        if idx == -1: return ""
-        val = l[idx + len(field) + 1:].strip()
-        for prefix in ["**", "*", "-", " "]:
-            if val.startswith(prefix): val = val[1:].strip()
-        return val
+def _parse_findings(review_text: str) -> List[Dict[str, Any]]:
+    findings: List[Dict[str, Any]] = []
+    current: Optional[Dict[str, Any]] = None
 
-    for line in lines:
-        line_str = line.strip().lower()
-        if "type:" in line_str:
-            if current_finding:
-                findings.append(current_finding)
-            current_finding = {
-                "type": extract_val(line, "type"),
+    def _val(line: str, key: str) -> str:
+        lower = line.lower()
+        needle = f"{key}:"
+        i = lower.find(needle)
+        if i == -1:
+            return ""
+        return line[i + len(needle) :].strip().lstrip("-* ").strip()
+
+    for raw in review_text.splitlines():
+        line = raw.strip()
+        low = line.lower()
+        if "type:" in low:
+            if current:
+                findings.append(current)
+            current = {
+                "type": _val(line, "type") or "other",
                 "severity": "medium",
                 "location": "unspecified",
                 "description": "",
-                "suggestion": ""
+                "suggestion": "",
             }
-        elif "severity:" in line_str and current_finding:
-            current_finding["severity"] = extract_val(line, "severity")
-        elif "location:" in line_str and current_finding:
-            current_finding["location"] = extract_val(line, "location")
-        elif ("description:" in line_str or "what's wrong:" in line_str) and current_finding:
-            current_finding["description"] = extract_val(line, "description")
-        elif ("suggestion:" in line_str or "fix:" in line_str) and current_finding:
-            current_finding["suggestion"] = extract_val(line, "suggestion")
-    
-    if current_finding:
-        findings.append(current_finding)
-        
-    if not findings:
-        for line in lines:
-            if "bug" in line.lower() or "issue" in line.lower():
-                findings.append({
-                    "type": "logic",
-                    "severity": "medium",
-                    "location": "see code",
-                    "description": line.strip(" -:*"),
-                    "suggestion": ""
-                })
-    return findings[:10]
+            continue
+
+        if not current:
+            continue
+
+        if "severity:" in low:
+            current["severity"] = _val(line, "severity") or current["severity"]
+        elif "location:" in low:
+            current["location"] = _val(line, "location") or current["location"]
+        elif "description:" in low:
+            current["description"] = _val(line, "description") or current["description"]
+        elif "suggestion:" in low:
+            current["suggestion"] = _val(line, "suggestion") or current["suggestion"]
+
+    if current:
+        findings.append(current)
+
+    return findings[:7]
 
 
-def get_model_message(client, pr_title, pr_description, code, language, task_type):
-    focus = "comprehensively review for all issues"
-    if task_type == "readability":
-        focus = "focus heavily on readability and style issues"
-    elif task_type == "bug_logic":
-        focus = "focus on logic bugs and errors"
+def _llm_review(openai_client: OpenAI, task_id: str, pr: Dict[str, Any]) -> str:
+    focus = "review for issues"
+    if task_id == "readability":
+        focus = "focus on readability and style issues"
+    elif task_id == "bug_logic":
+        focus = "focus on logic bugs and edge cases"
+    elif task_id == "full_review":
+        focus = "focus on readability, logic bugs, and security issues"
 
-    user_prompt = f"""Review this Pull Request:
+    title = pr.get("title", "")
+    desc = pr.get("description", "")
+    lang = pr.get("language", "")
+    code = pr.get("code", "")
 
-Title: {pr_title}
-Description: {pr_description}
+    user_prompt = (
+        "Review this Pull Request.\n\n"
+        f"Title: {title}\n"
+        f"Description: {desc}\n\n"
+        f"Code (language: {lang}):\n```{lang}\n{code}\n```\n\n"
+        f"Please {focus}. Provide findings."
+    )
 
-Code to review (language: {language}):
-```{language}
-{code}
-```
-
-Please {focus}."""
-
-    try:
-        completion = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt}
-            ],
-            temperature=0.3,
-            max_tokens=1000
-        )
-        text = (completion.choices[0].message.content or "").strip()
-        return text if text else "No findings generated."
-    except Exception as exc:
-        print(f"[DEBUG] Model request failed: {exc}", flush=True)
-        return "Model connection failed"
+    completion = openai_client.chat.completions.create(
+        model=MODEL_NAME,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.2,
+        max_tokens=900,
+    )
+    return (completion.choices[0].message.content or "").strip()
 
 
-async def run_task(client, env, task_id: str):
-    log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
-    
+async def _run_episode(task_id: str) -> None:
+    _log_start(task_id)
+
     rewards: List[float] = []
     steps_taken = 0
-    score = 0.0
     success = False
+    last_action_error: Optional[str] = None
+
+    env = CodeReviewEnvFactory.from_docker_image("local")
 
     try:
+        if HF_TOKEN is None or HF_TOKEN == "":
+            raise ValueError("HF_TOKEN environment variable is required")
+
+        openai_client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+
         result = await env.reset(task_id=task_id)
-        
-        pr_title = result.observation.pr_info.get("title", "")
-        pr_description = result.observation.pr_info.get("description", "")
-        code = result.observation.pr_info.get("code", "")
-        language = result.observation.pr_info.get("language", "")
-        
+        pr_info: Dict[str, Any] = getattr(result.observation, "pr_info", {}) or {}
+
         for step in range(1, MAX_STEPS + 1):
-            if result.done:
-                break
-                
-            review_text = get_model_message(client, pr_title, pr_description, code, language, task_id)
-            findings = ReviewAgent_parse(review_text)
-            
+            steps_taken = step
+
+            review_text = _llm_review(openai_client, task_id, pr_info)
+            findings = _parse_findings(review_text)
+
             action = CodeReviewAction(
                 review_text=review_text,
                 findings=findings,
                 confidence=0.8,
-                review_category=task_id
+                review_category=task_id,
             )
-            
+
             result = await env.step(action)
-            obs = result.observation
-            
-            reward = result.reward or 0.0
-            done = result.done
-            error = None
-            
+            reward = float(result.reward or 0.0)
+            done = bool(result.done)
+
             rewards.append(reward)
-            steps_taken = step
-            score = obs.cumulative_score
-            
-            log_step(step=step, action="Submitted Code Review", reward=reward, done=done, error=error)
-            
+            _log_step(step=step, action="submit_review", reward=reward, done=done, error=last_action_error)
+
             if done:
                 break
 
-        success = score > 0.1
-        
+        success = any(r > 0 for r in rewards)
+
     except Exception as exc:
-        log_step(step=steps_taken+1, action="Exception", reward=0.0, done=True, error=str(exc))
-        print(f"[DEBUG] Runtime exception inside task {task_id}: {exc}", flush=True)
+        last_action_error = str(exc)
+        success = False
     finally:
-        log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
+        try:
+            await env.close()
+        except Exception:
+            pass
+        _log_end(success=success, steps=steps_taken, rewards=rewards)
+
 
 async def main() -> None:
-    client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
-    
-    # We must use from_docker_image if available to test external connectivity, else fallback directly!
-    if LOCAL_IMAGE_NAME:
-        env = CodeReviewEnvFactory.from_docker_image(LOCAL_IMAGE_NAME)
-    else:
-        # Fallback to localhost if testing actively without IMAGE_NAME flag
-        env = CodeReviewEnvFactory.from_docker_image("local")
-
-    tasks = ["readability", "bug_logic", "full_review"]
-    
-    # Check if a specific task is requested by the env runner
     target_task = os.getenv("TASK_NAME")
-    if target_task and target_task in tasks:
-        await run_task(client, env, target_task)
-    else:
-        for task_id in tasks:
-            await run_task(client, env, task_id)
-            
-    try:
-        await env.close()
-    except Exception as e:
-        print(f"[DEBUG] env.close() error: {e}", flush=True)
+    if target_task and target_task in TASKS:
+        await _run_episode(target_task)
+        return
+
+    for t in TASKS:
+        await _run_episode(t)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
