@@ -31,8 +31,8 @@ class CodeReviewEnvironment(Environment):
     MAX_STEPS_PER_EPISODE = 10
     MAX_FINDINGS_PER_STEP = 7
     # IMPORTANT: validator parses numeric outputs with 2 decimals.
-    # Use eps=0.01 so values never round to 0.00 or 1.00.
-    _EPS = 0.01
+    # Use eps=0.05 so values never round to 0.00 or 1.00.
+    _EPS = 0.05
     _GLOBAL_TASK: Optional[Dict[str, Any]] = None
     _GLOBAL_STATE: Optional[Dict[str, Any]] = None
     
@@ -311,7 +311,14 @@ Please review this code and provide your findings.""",
             gt_by_type[itype] = gt_by_type.get(itype, 0) + 1
         
                                            
-        breakdown = {}
+        # FIX: Pre-fill the dictionary so no key is ever missing and defaulted
+        # to 0.0 by the validator.
+        breakdown: Dict[str, float] = {
+            "readability": self._EPS,
+            "logic": self._EPS,
+            "security": self._EPS,
+            "description_match": self._EPS,
+        }
         for itype in set(list(found_by_type.keys()) + list(gt_by_type.keys())):
             found = found_by_type.get(itype, 0)
             expected = gt_by_type.get(itype, 0)
@@ -323,10 +330,10 @@ Please review this code and provide your findings.""",
             else:
                                                                   
                 raw = min(found / expected, 1.0)
-                # Strict (0, 1) clamp to satisfy validator.
-                if raw <= 0.0:
+                # FIX: Strict clamp against _EPS to survive validation rounding.
+                if raw <= self._EPS:
                     raw = self._EPS
-                elif raw >= 1.0:
+                elif raw >= 1.0 - self._EPS:
                     raw = 1.0 - self._EPS
                 breakdown[itype] = raw
         

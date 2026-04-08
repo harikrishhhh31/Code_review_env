@@ -6,14 +6,14 @@ from openenv.core.rubrics import Rubric
 # IMPORTANT:
 # Validator parses rewards/scores with 2 decimal places.
 # Keep values away from endpoints even after rounding.
-_EPS = 0.01
+_EPS = 0.05
 
 
 def _strict_unit_interval(x: float) -> float:
     """Clamp score to be strictly within (0, 1)."""
-    if x <= 0.0:
+    if x <= _EPS:
         return _EPS
-    if x >= 1.0:
+    if x >= 1.0 - _EPS:
         return 1.0 - _EPS
     return x
 
