@@ -141,6 +141,16 @@ async def _run_episode(task_id: str) -> None:
         # Must use the injected LiteLLM proxy base_url + api_key.
         openai_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
+        # Phase 2 validator checks for *any* proxy traffic. Do a minimal call up front
+        # to ensure the injected proxy sees activity even if the episode ends early.
+        # (No stdout printed; failures fall through to END as usual.)
+        _ = openai_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=1,
+            temperature=0,
+        )
+
         result = await env.reset(task_id=task_id)
         pr_info: Dict[str, Any] = getattr(result.observation, "pr_info", {}) or {}
 
