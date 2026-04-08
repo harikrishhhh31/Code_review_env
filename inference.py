@@ -1,5 +1,6 @@
 import asyncio
 import os
+import json
 from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
@@ -18,10 +19,20 @@ BENCHMARK = "code_review_env"
 TASKS = ["readability", "bug_logic", "full_review"]
 MAX_STEPS = 5
 
-SYSTEM_PROMPT = (
-    "You are an expert code reviewer. Identify issues and propose fixes. "
-    "Return clear, structured findings."
-)
+SYSTEM_PROMPT = """
+You must output STRICT JSON only.
+
+No explanations.
+No extra text.
+
+Follow exact schema:
+bug_identified (bool)
+bug_location (string)
+bug_type (off-by-one | logic-error | insecure-deserialization | none)
+bug_description (string)
+severity (none | low | medium | high | critical)
+suggested_fix (string)
+""".strip()
 
 
 def _bool(v: bool) -> str:
@@ -46,6 +57,42 @@ def _log_end(success: bool, steps: int, rewards: List[float]) -> None:
 
 
 def _parse_findings(review_text: str) -> List[Dict[str, Any]]:
+    # Prefer JSON parsing (prompt requires strict JSON).
+    txt = (review_text or "").strip()
+    if txt.startswith("{") and txt.endswith("}"):
+        try:
+            obj = json.loads(txt)
+            bug_identified = bool(obj.get("bug_identified", False))
+            if not bug_identified:
+                return []
+
+            bug_type = str(obj.get("bug_type", "other")).strip().lower()
+            severity = str(obj.get("severity", "medium")).strip().lower()
+            location = str(obj.get("bug_location", "unspecified")).strip()
+            desc = str(obj.get("bug_description", "")).strip()
+            fix = str(obj.get("suggested_fix", "")).strip()
+
+            mapped_type = "logic"
+            if bug_type == "insecure-deserialization":
+                mapped_type = "security"
+            elif bug_type in ("off-by-one", "logic-error"):
+                mapped_type = "logic"
+
+            mapped_sev = severity if severity in ("low", "medium", "high", "critical") else "medium"
+
+            return [
+                {
+                    "type": mapped_type,
+                    "severity": mapped_sev,
+                    "location": location or "unspecified",
+                    "description": desc or "Bug identified.",
+                    "suggestion": fix,
+                }
+            ]
+        except Exception:
+            # Fall through to heuristic parsing.
+            pass
+
     findings: List[Dict[str, Any]] = []
     current: Optional[Dict[str, Any]] = None
 
