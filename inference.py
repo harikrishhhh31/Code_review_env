@@ -144,12 +144,16 @@ async def _run_episode(task_id: str) -> None:
         # Phase 2 validator checks for *any* proxy traffic. Do a minimal call up front
         # to ensure the injected proxy sees activity even if the episode ends early.
         # (No stdout printed; failures fall through to END as usual.)
-        _ = openai_client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[{"role": "user", "content": "ping"}],
-            max_tokens=1,
-            temperature=0,
-        )
+        try:
+            _ = openai_client.chat.completions.create(
+                model=MODEL_NAME,
+                messages=[{"role": "user", "content": "ping"}],
+                max_tokens=1,
+                temperature=0,
+            )
+        except Exception as exc:
+            # Do not fail the episode before at least one env.step().
+            last_action_error = str(exc)
 
         result = await env.reset(task_id=task_id)
         pr_info: Dict[str, Any] = getattr(result.observation, "pr_info", {}) or {}
@@ -157,8 +161,14 @@ async def _run_episode(task_id: str) -> None:
         for step in range(1, MAX_STEPS + 1):
             steps_taken = step
 
-            review_text = _llm_review(openai_client, task_id, pr_info)
-            findings = _parse_findings(review_text)
+            try:
+                review_text = _llm_review(openai_client, task_id, pr_info)
+                findings = _parse_findings(review_text)
+            except Exception as exc:
+                # Still take an environment step so the validator sees a score.
+                last_action_error = str(exc)
+                review_text = "Proxy call failed; submitting empty findings."
+                findings = []
 
             action = CodeReviewAction(
                 review_text=review_text,
