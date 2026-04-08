@@ -3,7 +3,10 @@ from typing import List, Dict, Any, Optional, Tuple
 import re
 from openenv.core.rubrics import Rubric
 
-_EPS = 1e-6
+# IMPORTANT:
+# Validator parses rewards/scores with 2 decimal places.
+# Keep values away from endpoints even after rounding.
+_EPS = 0.01
 
 
 def _strict_unit_interval(x: float) -> float:
@@ -50,7 +53,7 @@ class CorrectnessRubric(Rubric):
                                                                         
         if not agent_findings:
             self.last_score = 0.0
-            return _strict_unit_interval(0.0) * self.weight                           
+            return _strict_unit_interval(0.0 * self.weight)
         
                                                  
         correct_count = 0
@@ -66,7 +69,7 @@ class CorrectnessRubric(Rubric):
         
                                  
         self.last_score = precision
-        return _strict_unit_interval(precision) * self.weight
+        return _strict_unit_interval(precision * self.weight)
     
     def _findings_match(
         self, 
@@ -111,7 +114,7 @@ class CompletenessRubric(Rubric):
         
         if not ground_truth:
             self.last_score = 1.0
-            return _strict_unit_interval(1.0) * self.weight                                  
+            return _strict_unit_interval(1.0 * self.weight)                                
         
                                                        
         found_count = 0
@@ -124,7 +127,7 @@ class CompletenessRubric(Rubric):
                           
         recall = found_count / len(ground_truth)
         self.last_score = recall
-        return _strict_unit_interval(recall) * self.weight
+        return _strict_unit_interval(recall * self.weight)
     
     def _issue_found(
         self, 
@@ -165,7 +168,7 @@ class SeverityRubric(Rubric):
         
         if not agent_findings:
             self.last_score = 0.0
-            return _strict_unit_interval(0.0) * self.weight
+            return _strict_unit_interval(0.0 * self.weight)
         
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
@@ -198,11 +201,11 @@ class SeverityRubric(Rubric):
         
         if total_severity_issues == 0:
             self.last_score = 1.0
-            return _strict_unit_interval(1.0) * self.weight                                
+            return _strict_unit_interval(1.0 * self.weight)                              
         
         score = correct_severity / total_severity_issues
         self.last_score = score
-        return _strict_unit_interval(score) * self.weight
+        return _strict_unit_interval(score * self.weight)
 
 
 class DescriptionMatchRubric(Rubric):
@@ -222,7 +225,7 @@ class DescriptionMatchRubric(Rubric):
         
         score = 1.0 if agent_assessment_correct else 0.0
         self.last_score = score
-        return _strict_unit_interval(score) * self.weight
+        return _strict_unit_interval(score * self.weight)
 
 
                                                                                
