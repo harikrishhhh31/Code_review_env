@@ -8,9 +8,11 @@ from client import CodeReviewEnvFactory
 from models import CodeReviewAction
 
 # --- REQUIRED ENV VARS (per hackathon rules) ---
+# Scaler validator injects these. We still provide defaults where required.
 API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-HF_TOKEN = os.getenv("HF_TOKEN")
+# IMPORTANT: Phase 2 expects usage of API_KEY (LiteLLM proxy key), not HF_TOKEN.
+API_KEY = os.getenv("API_KEY")
 
 BENCHMARK = "code_review_env"
 TASKS = ["readability", "bug_logic", "full_review"]
@@ -133,10 +135,11 @@ async def _run_episode(task_id: str) -> None:
     env = CodeReviewEnvFactory.from_docker_image("local")
 
     try:
-        if HF_TOKEN is None or HF_TOKEN == "":
-            raise ValueError("HF_TOKEN environment variable is required")
+        if API_KEY is None or API_KEY == "":
+            raise ValueError("API_KEY environment variable is required")
 
-        openai_client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
+        # Must use the injected LiteLLM proxy base_url + api_key.
+        openai_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
         result = await env.reset(task_id=task_id)
         pr_info: Dict[str, Any] = getattr(result.observation, "pr_info", {}) or {}
