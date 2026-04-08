@@ -30,6 +30,7 @@ class CodeReviewEnvironment(Environment):
                                 
     MAX_STEPS_PER_EPISODE = 10
     MAX_FINDINGS_PER_STEP = 7
+    _EPS = 1e-6
     _GLOBAL_TASK: Optional[Dict[str, Any]] = None
     _GLOBAL_STATE: Optional[Dict[str, Any]] = None
     
@@ -106,7 +107,8 @@ class CodeReviewEnvironment(Environment):
         self._state.episode_id = new_episode_id
         self._state.step_count = 0
         self._state.task_index = task_index or 0
-        self._state.total_reward = 0.0
+        # Keep scores strictly within (0, 1) for validator.
+        self._state.total_reward = self._EPS
         self._state.agent_findings_history = []
         issues = list(self._current_task["ground_truth_issues"])
         rng = random.Random(seed or uuid.uuid4().int)
@@ -151,8 +153,8 @@ Please review this code and provide your findings.""",
                 "description_match": 1e-6,
             },
             findings_graded=[],
-            reward=0.0,                       
-            cumulative_score=0.0,
+            reward=self._EPS,
+            cumulative_score=self._EPS,
             done=False,
             metadata={
                 "task_id": self._state.task_id,
@@ -209,10 +211,19 @@ Please review this code and provide your findings.""",
         findings_graded = self._grade_findings(sanitized_action)
         penalty_false_positives = self._false_positive_penalty(findings_graded)
         reward = reward + penalty_overflow + penalty_false_positives
-        reward = max(min(reward, 1.0), -1.0)
+
+        # Validator requires task scores strictly within (0, 1).
+        # Map any negative/overflow to [0, 1] and clamp strictly.
+        reward = max(min(reward, 1.0), 0.0)
+        if reward <= 0.0:
+            reward = self._EPS
+        elif reward >= 1.0:
+            reward = 1.0 - self._EPS
 
         self._step_rewards.append(reward)
         self._state.total_reward += reward
+        if self._state.total_reward >= 1.0:
+            self._state.total_reward = 1.0 - self._EPS
 
         CodeReviewEnvironment._GLOBAL_TASK = copy.deepcopy(self._current_task)
         CodeReviewEnvironment._GLOBAL_STATE = {
