@@ -30,7 +30,9 @@ class CodeReviewEnvironment(Environment):
                                 
     MAX_STEPS_PER_EPISODE = 10
     MAX_FINDINGS_PER_STEP = 7
-    _EPS = 1e-6
+    # IMPORTANT: validator parses numeric outputs with 2 decimals.
+    # Use eps=0.01 so values never round to 0.00 or 1.00.
+    _EPS = 0.01
     _GLOBAL_TASK: Optional[Dict[str, Any]] = None
     _GLOBAL_STATE: Optional[Dict[str, Any]] = None
     
@@ -147,10 +149,10 @@ Code to Review:
 Please review this code and provide your findings.""",
             score_breakdown={
                 # Must be strictly within (0, 1) for validator.
-                "readability": 1e-6,
-                "logic": 1e-6,
-                "security": 1e-6,
-                "description_match": 1e-6,
+                "readability": self._EPS,
+                "logic": self._EPS,
+                "security": self._EPS,
+                "description_match": self._EPS,
             },
             findings_graded=[],
             reward=self._EPS,
@@ -214,15 +216,11 @@ Please review this code and provide your findings.""",
 
         # Validator requires task scores strictly within (0, 1).
         # Map any negative/overflow to [0, 1] and clamp strictly.
-        reward = max(min(reward, 1.0), 0.0)
-        if reward <= 0.0:
-            reward = self._EPS
-        elif reward >= 1.0:
-            reward = 1.0 - self._EPS
+        reward = max(min(reward, 1.0 - self._EPS), self._EPS)
 
         self._step_rewards.append(reward)
         self._state.total_reward += reward
-        if self._state.total_reward >= 1.0:
+        if self._state.total_reward >= 1.0 - self._EPS:
             self._state.total_reward = 1.0 - self._EPS
 
         CodeReviewEnvironment._GLOBAL_TASK = copy.deepcopy(self._current_task)
@@ -319,7 +317,7 @@ Please review this code and provide your findings.""",
             expected = gt_by_type.get(itype, 0)
             
             if found == 0:
-                breakdown[itype] = 1e-6
+                breakdown[itype] = self._EPS
             elif expected == 0:
                 breakdown[itype] = 0.5
             else:
@@ -327,9 +325,9 @@ Please review this code and provide your findings.""",
                 raw = min(found / expected, 1.0)
                 # Strict (0, 1) clamp to satisfy validator.
                 if raw <= 0.0:
-                    raw = 1e-6
+                    raw = self._EPS
                 elif raw >= 1.0:
-                    raw = 1.0 - 1e-6
+                    raw = 1.0 - self._EPS
                 breakdown[itype] = raw
         
         return breakdown
