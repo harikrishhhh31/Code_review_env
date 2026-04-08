@@ -153,6 +153,12 @@ Please review this code and provide your findings.""",
                 "logic": self._EPS,
                 "security": self._EPS,
                 "description_match": self._EPS,
+                "readability_score": self._EPS,
+                "logic_score": self._EPS,
+                "security_score": self._EPS,
+                "description_match_score": self._EPS,
+                "bug_logic": self._EPS,
+                "full_review": self._EPS,
             },
             findings_graded=[],
             reward=self._EPS,
@@ -318,24 +324,33 @@ Please review this code and provide your findings.""",
             "logic": self._EPS,
             "security": self._EPS,
             "description_match": self._EPS,
+            "readability_score": self._EPS,
+            "logic_score": self._EPS,
+            "security_score": self._EPS,
+            "description_match_score": self._EPS,
+            "bug_logic": self._EPS,
+            "full_review": self._EPS,
         }
+        # Safely assign the task_id itself as a key to avoid 0.0 defaults
+        breakdown[self._state.task_id] = self._EPS
         for itype in set(list(found_by_type.keys()) + list(gt_by_type.keys())):
             found = found_by_type.get(itype, 0)
             expected = gt_by_type.get(itype, 0)
             
             if found == 0:
-                breakdown[itype] = self._EPS
+                raw = self._EPS
             elif expected == 0:
-                breakdown[itype] = 0.5
+                raw = 0.5
             else:
-                                                                  
                 raw = min(found / expected, 1.0)
                 # FIX: Strict clamp against _EPS to survive validation rounding.
                 if raw <= self._EPS:
                     raw = self._EPS
                 elif raw >= 1.0 - self._EPS:
                     raw = 1.0 - self._EPS
-                breakdown[itype] = raw
+                    
+            breakdown[itype] = raw
+            breakdown[f"{itype}_score"] = raw
         
         return breakdown
     
