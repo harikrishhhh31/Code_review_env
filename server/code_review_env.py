@@ -144,10 +144,11 @@ Code to Review:
 
 Please review this code and provide your findings.""",
             score_breakdown={
-                "readability": 0.0,
-                "logic": 0.0,
-                "security": 0.0,
-                "description_match": 0.0
+                # Must be strictly within (0, 1) for validator.
+                "readability": 1e-6,
+                "logic": 1e-6,
+                "security": 1e-6,
+                "description_match": 1e-6,
             },
             findings_graded=[],
             reward=0.0,                       
@@ -307,12 +308,18 @@ Please review this code and provide your findings.""",
             expected = gt_by_type.get(itype, 0)
             
             if found == 0:
-                breakdown[itype] = 0.0
+                breakdown[itype] = 1e-6
             elif expected == 0:
-                breakdown[itype] = 0.5                                           
+                breakdown[itype] = 0.5
             else:
                                                                   
-                breakdown[itype] = min(found / expected, 1.0)
+                raw = min(found / expected, 1.0)
+                # Strict (0, 1) clamp to satisfy validator.
+                if raw <= 0.0:
+                    raw = 1e-6
+                elif raw >= 1.0:
+                    raw = 1.0 - 1e-6
+                breakdown[itype] = raw
         
         return breakdown
     

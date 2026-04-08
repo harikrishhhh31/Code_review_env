@@ -3,6 +3,18 @@ from typing import List, Dict, Any, Optional, Tuple
 import re
 from openenv.core.rubrics import Rubric
 
+_EPS = 1e-6
+
+
+def _strict_unit_interval(x: float) -> float:
+    """Clamp score to be strictly within (0, 1)."""
+    if x <= 0.0:
+        return _EPS
+    if x >= 1.0:
+        return 1.0 - _EPS
+    return x
+
+
 def _location_match(agent_loc: str, gt_loc: str) -> bool:
     if not agent_loc or not gt_loc:
         return True
@@ -37,7 +49,8 @@ class CorrectnessRubric(Rubric):
         
                                                                         
         if not agent_findings:
-            return 0.0                           
+            self.last_score = 0.0
+            return _strict_unit_interval(0.0) * self.weight                           
         
                                                  
         correct_count = 0
@@ -53,8 +66,7 @@ class CorrectnessRubric(Rubric):
         
                                  
         self.last_score = precision
-        
-        return precision * self.weight
+        return _strict_unit_interval(precision) * self.weight
     
     def _findings_match(
         self, 
@@ -98,7 +110,8 @@ class CompletenessRubric(Rubric):
         )
         
         if not ground_truth:
-            return 1.0                                  
+            self.last_score = 1.0
+            return _strict_unit_interval(1.0) * self.weight                                  
         
                                                        
         found_count = 0
@@ -111,8 +124,7 @@ class CompletenessRubric(Rubric):
                           
         recall = found_count / len(ground_truth)
         self.last_score = recall
-        
-        return recall * self.weight
+        return _strict_unit_interval(recall) * self.weight
     
     def _issue_found(
         self, 
@@ -152,7 +164,8 @@ class SeverityRubric(Rubric):
         agent_findings = getattr(action, 'findings', [])
         
         if not agent_findings:
-            return 0.0
+            self.last_score = 0.0
+            return _strict_unit_interval(0.0) * self.weight
         
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
@@ -184,12 +197,12 @@ class SeverityRubric(Rubric):
                     break
         
         if total_severity_issues == 0:
-            return 1.0                                
+            self.last_score = 1.0
+            return _strict_unit_interval(1.0) * self.weight                                
         
         score = correct_severity / total_severity_issues
         self.last_score = score
-        
-        return score * self.weight
+        return _strict_unit_interval(score) * self.weight
 
 
 class DescriptionMatchRubric(Rubric):
@@ -209,8 +222,7 @@ class DescriptionMatchRubric(Rubric):
         
         score = 1.0 if agent_assessment_correct else 0.0
         self.last_score = score
-        
-        return score * self.weight
+        return _strict_unit_interval(score) * self.weight
 
 
                                                                                
@@ -233,7 +245,7 @@ class ReadabilityRubric(Rubric):
                               
         total = c_score + comp_score
         
-        return min(total, 1.0)              
+        return _strict_unit_interval(min(total, 1.0))              
 
 
 class BugLogicRubric(Rubric):
@@ -251,7 +263,7 @@ class BugLogicRubric(Rubric):
         
         total = c_score + comp_score + sev_score
         
-        return min(total, 1.0)
+        return _strict_unit_interval(min(total, 1.0))
 
 
 class FullReviewRubric(Rubric):
@@ -274,7 +286,7 @@ class FullReviewRubric(Rubric):
             desc_score * 0.40                                     
         )
         
-        return min(total, 1.0)
+        return _strict_unit_interval(min(total, 1.0))
 
 
                                                                                
