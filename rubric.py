@@ -39,7 +39,7 @@ class CorrectnessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0                             
+        self.last_score = _EPS
     
     def forward(self, action, observation) -> float:
                               
@@ -106,7 +106,7 @@ class CompletenessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = _EPS
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
@@ -165,7 +165,7 @@ class SeverityRubric(Rubric):
     def __init__(self, weight: float = 0.5):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = _EPS
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
@@ -220,7 +220,7 @@ class DescriptionMatchRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = _EPS
     
     def forward(self, action, observation) -> float:
         pr_info = getattr(observation, 'pr_info', {})
@@ -245,7 +245,7 @@ class ReadabilityRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-                                                                 
+        self.last_score = _EPS
         self.correctness = CorrectnessRubric(weight=0.5)
         self.completeness = CompletenessRubric(weight=0.5)
     
@@ -265,6 +265,7 @@ class BugLogicRubric(Rubric):
     
     def __init__(self):
         super().__init__()
+        self.last_score = _EPS
         self.correctness = CorrectnessRubric(weight=0.4)
         self.completeness = CompletenessRubric(weight=0.4)
         self.severity = SeverityRubric(weight=0.2)
@@ -285,6 +286,7 @@ class FullReviewRubric(Rubric):
     
     def __init__(self):
         super().__init__()
+        self.last_score = _EPS
         self.readability = ReadabilityRubric()
         self.bug_logic = BugLogicRubric()
         self.description_match = DescriptionMatchRubric(weight=0.2)
