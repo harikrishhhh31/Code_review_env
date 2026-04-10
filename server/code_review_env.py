@@ -30,9 +30,6 @@ class CodeReviewEnvironment(Environment):
                                 
     MAX_STEPS_PER_EPISODE = 10
     MAX_FINDINGS_PER_STEP = 7
-    # IMPORTANT: validator parses numeric outputs with 2 decimals.
-    # Use eps=0.05 so values never round to 0.00 or 1.00.
-    _EPS = 0.05
     _GLOBAL_TASK: Optional[Dict[str, Any]] = None
     _GLOBAL_STATE: Optional[Dict[str, Any]] = None
     
@@ -109,8 +106,7 @@ class CodeReviewEnvironment(Environment):
         self._state.episode_id = new_episode_id
         self._state.step_count = 0
         self._state.task_index = task_index or 0
-        # Keep scores strictly within (0, 1) for validator.
-        self._state.total_reward = self._EPS
+        self._state.total_reward = 0.0
         self._state.agent_findings_history = []
         issues = list(self._current_task["ground_truth_issues"])
         rng = random.Random(seed or uuid.uuid4().int)
@@ -148,21 +144,14 @@ Code to Review:
 
 Please review this code and provide your findings.""",
             score_breakdown={
-                # Must be strictly within (0, 1) for validator.
-                "readability": self._EPS,
-                "logic": self._EPS,
-                "security": self._EPS,
-                "description_match": self._EPS,
-                "readability_score": self._EPS,
-                "logic_score": self._EPS,
-                "security_score": self._EPS,
-                "description_match_score": self._EPS,
-                "bug_logic": self._EPS,
-                "full_review": self._EPS,
+                "readability": 0.0,
+                "logic": 0.0,
+                "security": 0.0,
+                "description_match": 0.0
             },
             findings_graded=[],
-            reward=self._EPS,
-            cumulative_score=self._EPS,
+            reward=0.0,                       
+            cumulative_score=0.0,
             done=False,
             metadata={
                 "task_id": self._state.task_id,
@@ -219,15 +208,10 @@ Please review this code and provide your findings.""",
         findings_graded = self._grade_findings(sanitized_action)
         penalty_false_positives = self._false_positive_penalty(findings_graded)
         reward = reward + penalty_overflow + penalty_false_positives
-
-        # Validator requires task scores strictly within (0, 1).
-        # Map any negative/overflow to [0, 1] and clamp strictly.
-        reward = max(min(reward, 1.0 - self._EPS), self._EPS)
+        reward = max(min(reward, 1.0), -1.0)
 
         self._step_rewards.append(reward)
         self._state.total_reward += reward
-        if self._state.total_reward >= 1.0 - self._EPS:
-            self._state.total_reward = 1.0 - self._EPS
 
         CodeReviewEnvironment._GLOBAL_TASK = copy.deepcopy(self._current_task)
         CodeReviewEnvironment._GLOBAL_STATE = {
@@ -317,40 +301,18 @@ Please review this code and provide your findings.""",
             gt_by_type[itype] = gt_by_type.get(itype, 0) + 1
         
                                            
-        # FIX: Pre-fill the dictionary so no key is ever missing and defaulted
-        # to 0.0 by the validator.
-        breakdown: Dict[str, float] = {
-            "readability": self._EPS,
-            "logic": self._EPS,
-            "security": self._EPS,
-            "description_match": self._EPS,
-            "readability_score": self._EPS,
-            "logic_score": self._EPS,
-            "security_score": self._EPS,
-            "description_match_score": self._EPS,
-            "bug_logic": self._EPS,
-            "full_review": self._EPS,
-        }
-        # Safely assign the task_id itself as a key to avoid 0.0 defaults
-        breakdown[self._state.task_id] = self._EPS
+        breakdown = {}
         for itype in set(list(found_by_type.keys()) + list(gt_by_type.keys())):
             found = found_by_type.get(itype, 0)
             expected = gt_by_type.get(itype, 0)
             
             if found == 0:
-                raw = self._EPS
+                breakdown[itype] = 0.0
             elif expected == 0:
-                raw = 0.5
+                breakdown[itype] = 0.5                                           
             else:
-                raw = min(found / expected, 1.0)
-                # FIX: Strict clamp against _EPS to survive validation rounding.
-                if raw <= self._EPS:
-                    raw = self._EPS
-                elif raw >= 1.0 - self._EPS:
-                    raw = 1.0 - self._EPS
-                    
-            breakdown[itype] = raw
-            breakdown[f"{itype}_score"] = raw
+                                                                  
+                breakdown[itype] = min(found / expected, 1.0)
         
         return breakdown
     

@@ -3,21 +3,6 @@ from typing import List, Dict, Any, Optional, Tuple
 import re
 from openenv.core.rubrics import Rubric
 
-# IMPORTANT:
-# Validator parses rewards/scores with 2 decimal places.
-# Keep values away from endpoints even after rounding.
-_EPS = 0.05
-
-
-def _strict_unit_interval(x: float) -> float:
-    """Clamp score to be strictly within (0, 1)."""
-    if x <= _EPS:
-        return _EPS
-    if x >= 1.0 - _EPS:
-        return 1.0 - _EPS
-    return x
-
-
 def _location_match(agent_loc: str, gt_loc: str) -> bool:
     if not agent_loc or not gt_loc:
         return True
@@ -39,7 +24,7 @@ class CorrectnessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = _EPS
+        self.last_score = 0.0                             
     
     def forward(self, action, observation) -> float:
                               
@@ -52,9 +37,7 @@ class CorrectnessRubric(Rubric):
         
                                                                         
         if not agent_findings:
-            score = _strict_unit_interval(0.0 * self.weight)
-            self.last_score = score
-            return score
+            return 0.0                           
         
                                                  
         correct_count = 0
@@ -69,9 +52,9 @@ class CorrectnessRubric(Rubric):
         precision = correct_count / len(agent_findings) if agent_findings else 0.0
         
                                  
-        score = _strict_unit_interval(precision * self.weight)
-        self.last_score = score
-        return score
+        self.last_score = precision
+        
+        return precision * self.weight
     
     def _findings_match(
         self, 
@@ -106,7 +89,7 @@ class CompletenessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = _EPS
+        self.last_score = 0.0
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
@@ -115,9 +98,7 @@ class CompletenessRubric(Rubric):
         )
         
         if not ground_truth:
-            score = _strict_unit_interval(1.0 * self.weight)
-            self.last_score = score
-            return score                                
+            return 1.0                                  
         
                                                        
         found_count = 0
@@ -129,9 +110,9 @@ class CompletenessRubric(Rubric):
         
                           
         recall = found_count / len(ground_truth)
-        score = _strict_unit_interval(recall * self.weight)
-        self.last_score = score
-        return score
+        self.last_score = recall
+        
+        return recall * self.weight
     
     def _issue_found(
         self, 
@@ -165,15 +146,13 @@ class SeverityRubric(Rubric):
     def __init__(self, weight: float = 0.5):
         super().__init__()
         self.weight = weight
-        self.last_score = _EPS
+        self.last_score = 0.0
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
         
         if not agent_findings:
-            score = _strict_unit_interval(0.0 * self.weight)
-            self.last_score = score
-            return score
+            return 0.0
         
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
@@ -205,14 +184,12 @@ class SeverityRubric(Rubric):
                     break
         
         if total_severity_issues == 0:
-            score = _strict_unit_interval(1.0 * self.weight)
-            self.last_score = score
-            return score                              
+            return 1.0                                
         
-        computed_score = correct_severity / total_severity_issues
-        score = _strict_unit_interval(computed_score * self.weight)
+        score = correct_severity / total_severity_issues
         self.last_score = score
-        return score
+        
+        return score * self.weight
 
 
 class DescriptionMatchRubric(Rubric):
@@ -220,7 +197,7 @@ class DescriptionMatchRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = _EPS
+        self.last_score = 0.0
     
     def forward(self, action, observation) -> float:
         pr_info = getattr(observation, 'pr_info', {})
@@ -230,10 +207,10 @@ class DescriptionMatchRubric(Rubric):
                                                                            
         agent_assessment_correct = True               
         
-        computed_score = 1.0 if agent_assessment_correct else 0.0
-        score = _strict_unit_interval(computed_score * self.weight)
+        score = 1.0 if agent_assessment_correct else 0.0
         self.last_score = score
-        return score
+        
+        return score * self.weight
 
 
                                                                                
@@ -245,7 +222,7 @@ class ReadabilityRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-        self.last_score = _EPS
+                                                                 
         self.correctness = CorrectnessRubric(weight=0.5)
         self.completeness = CompletenessRubric(weight=0.5)
     
@@ -256,16 +233,13 @@ class ReadabilityRubric(Rubric):
                               
         total = c_score + comp_score
         
-        score = _strict_unit_interval(min(total, 1.0))
-        self.last_score = score
-        return score              
+        return min(total, 1.0)              
 
 
 class BugLogicRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-        self.last_score = _EPS
         self.correctness = CorrectnessRubric(weight=0.4)
         self.completeness = CompletenessRubric(weight=0.4)
         self.severity = SeverityRubric(weight=0.2)
@@ -277,16 +251,13 @@ class BugLogicRubric(Rubric):
         
         total = c_score + comp_score + sev_score
         
-        score = _strict_unit_interval(min(total, 1.0))
-        self.last_score = score
-        return score
+        return min(total, 1.0)
 
 
 class FullReviewRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-        self.last_score = _EPS
         self.readability = ReadabilityRubric()
         self.bug_logic = BugLogicRubric()
         self.description_match = DescriptionMatchRubric(weight=0.2)
@@ -303,9 +274,7 @@ class FullReviewRubric(Rubric):
             desc_score * 0.40                                     
         )
         
-        score = _strict_unit_interval(min(total, 1.0))
-        self.last_score = score
-        return score
+        return min(total, 1.0)
 
 
                                                                                
