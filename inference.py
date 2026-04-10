@@ -229,7 +229,9 @@ async def _run_episode(task_id: str) -> None:
             )
 
             result = await env.step(action)
-            reward = float(result.reward or 0.0)
+            reward = float(result.reward or 0.01)
+            # Strictly enforce OpenEnv bounds before appending to the score list
+            reward = max(min(reward, 0.99), 0.01)
             done = bool(result.done)
 
             rewards.append(reward)

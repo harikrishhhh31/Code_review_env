@@ -24,37 +24,25 @@ class CorrectnessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0                             
+        self.last_score = 0.01                             
     
     def forward(self, action, observation) -> float:
-                              
-        agent_findings = getattr(action, 'findings', [])
+        agent_findings = action.findings
         
-                                                       
-        ground_truth = getattr(observation, 'metadata', {}).get(
-            'ground_truth_issues', []
-        )
-        
-                                                                        
         if not agent_findings:
-            return 0.0                           
+            return 0.01                           
         
-                                                 
-        correct_count = 0
-        for agent_finding in agent_findings:
-                                                                     
-            for gt_issue in ground_truth:
-                if self._findings_match(agent_finding, gt_issue):
-                    correct_count += 1
-                    break                           
+        ground_truth = getattr(observation, 'metadata', {}).get('ground_truth_issues', [])
+        gt_types = {issue_dict["type"] for issue_dict in ground_truth}
         
-                                   
-        precision = correct_count / len(agent_findings) if agent_findings else 0.0
+        correct_count = sum(1 for finding in agent_findings if finding.get("type") in gt_types)
         
-                                 
-        self.last_score = precision
+        precision = correct_count / len(agent_findings) if agent_findings else 0.01
         
-        return precision * self.weight
+        computed_score = precision * self.weight
+        score = max(min(computed_score, 0.99), 0.01)
+        self.last_score = score
+        return score
     
     def _findings_match(
         self, 
@@ -89,30 +77,27 @@ class CompletenessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = 0.01
     
     def forward(self, action, observation) -> float:
-        agent_findings = getattr(action, 'findings', [])
-        ground_truth = getattr(observation, 'metadata', {}).get(
-            'ground_truth_issues', []
-        )
+        agent_findings = action.findings
+        ground_truth = getattr(observation, 'metadata', {}).get('ground_truth_issues', [])
         
         if not ground_truth:
-            return 1.0                                  
+            return 0.99                                  
         
-                                                       
-        found_count = 0
-        for gt_issue in ground_truth:
-            for agent_finding in agent_findings:
-                if self._issue_found(agent_finding, gt_issue):
-                    found_count += 1
-                    break
+        gt_types = {issue_dict["type"] for issue_dict in ground_truth}
         
-                          
-        recall = found_count / len(ground_truth)
-        self.last_score = recall
+        found_types = {finding.get("type") for finding in agent_findings}
         
-        return recall * self.weight
+        correct_types = found_types.intersection(gt_types)
+        
+        recall = len(correct_types) / len(gt_types)
+        
+        computed_score = recall * self.weight
+        score = max(min(computed_score, 0.99), 0.01)
+        self.last_score = score
+        return score
     
     def _issue_found(
         self, 
@@ -146,13 +131,13 @@ class SeverityRubric(Rubric):
     def __init__(self, weight: float = 0.5):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = 0.01
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
         
         if not agent_findings:
-            return 0.0
+            return 0.01
         
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
@@ -184,7 +169,7 @@ class SeverityRubric(Rubric):
                     break
         
         if total_severity_issues == 0:
-            return 1.0                                
+            return 0.99                                
         
         score = correct_severity / total_severity_issues
         self.last_score = score
@@ -197,20 +182,21 @@ class DescriptionMatchRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = 0.01
     
     def forward(self, action, observation) -> float:
         pr_info = getattr(observation, 'pr_info', {})
-        expected_match = pr_info.get('description_match', True)
+        description = pr_info.get('description', '')
         
                                                   
                                                                            
         agent_assessment_correct = True               
         
-        score = 1.0 if agent_assessment_correct else 0.0
+        computed_score = 0.99 if agent_assessment_correct else 0.01
+        score = max(min(computed_score * self.weight, 0.99), 0.01)
         self.last_score = score
         
-        return score * self.weight
+        return score
 
 
                                                                                
@@ -222,7 +208,7 @@ class ReadabilityRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-                                                                 
+        self.last_score = 0.01
         self.correctness = CorrectnessRubric(weight=0.5)
         self.completeness = CompletenessRubric(weight=0.5)
     
@@ -233,13 +219,16 @@ class ReadabilityRubric(Rubric):
                               
         total = c_score + comp_score
         
-        return min(total, 1.0)              
+        score = max(min(total, 0.99), 0.01)
+        self.last_score = score
+        return score
 
 
 class BugLogicRubric(Rubric):
     
     def __init__(self):
         super().__init__()
+        self.last_score = 0.01
         self.correctness = CorrectnessRubric(weight=0.4)
         self.completeness = CompletenessRubric(weight=0.4)
         self.severity = SeverityRubric(weight=0.2)
@@ -251,13 +240,16 @@ class BugLogicRubric(Rubric):
         
         total = c_score + comp_score + sev_score
         
-        return min(total, 1.0)
+        score = max(min(total, 0.99), 0.01)
+        self.last_score = score
+        return score
 
 
 class FullReviewRubric(Rubric):
     
     def __init__(self):
         super().__init__()
+        self.last_score = 0.01
         self.readability = ReadabilityRubric()
         self.bug_logic = BugLogicRubric()
         self.description_match = DescriptionMatchRubric(weight=0.2)
@@ -269,12 +261,14 @@ class FullReviewRubric(Rubric):
         
                               
         total = (
-            read_score * 0.25 +
-            bug_score * 0.35 +
+            read_score * 0.20 +
+            bug_score * 0.40 +
             desc_score * 0.40                                     
         )
         
-        return min(total, 1.0)
+        score = max(min(total, 0.99), 0.01)
+        self.last_score = score
+        return score
 
 
                                                                                
