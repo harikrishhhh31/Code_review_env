@@ -11,7 +11,7 @@ from models import CodeReviewAction
 # --- REQUIRED ENV VARS (per hackathon rules) ---
 # Scaler validator injects these. We still provide defaults where required.
 API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
 # Phase 1 relies on API_KEY. Phase 2 prefers HF_TOKEN. Fallback cleanly to pass both.
 API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
