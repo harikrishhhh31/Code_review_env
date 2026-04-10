@@ -215,11 +215,10 @@ Please review this code and provide your findings.""",
         penalty_false_positives = self._false_positive_penalty(findings_graded)
         reward = reward + penalty_overflow + penalty_false_positives
         
-        # RL episodic sum protection: 
-        # The sum across max_steps cannot exceed 1.0. We clamp to 0.99, then divide 
-        # by max_steps to guarantee the episode sum NEVER violates (0, 1) bounds.
-        clamped_target = max(min(reward, 0.99), 0.01)
-        reward = clamped_target / self._state.max_steps
+        # Clamp per-step reward strictly to (0.01, 0.99).
+        # Do NOT divide by max_steps — that causes rewards ~0.001 which format
+        # as '0.00' in stdout, which the validator reads as exactly 0.0 and rejects.
+        reward = max(min(reward, 0.99), 0.01)
 
         self._step_rewards.append(reward)
         self._state.total_reward += reward

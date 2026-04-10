@@ -187,8 +187,10 @@ async def _run_episode(task_id: str) -> None:
             await env.close()
         except Exception:
             pass
-        # Score = sum of rewards, strictly clamped to (0.01, 0.99) as required by validator
-        raw_score = sum(rewards) if rewards else 0.0
+        # Score = mean of per-step rewards, stays in (0.01, 0.99) by construction.
+        # Per-step rewards are already clamped to (0.01, 0.99) in the environment.
+        # Using mean (not sum) avoids exceeding 1.0 over multiple steps.
+        raw_score = (sum(rewards) / len(rewards)) if rewards else 0.01
         score = max(min(raw_score, 0.99), 0.01)
         _log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
