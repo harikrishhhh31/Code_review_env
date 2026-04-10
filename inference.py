@@ -40,9 +40,9 @@ def _log_step(step: int, action: str, reward: float, done: bool, error: Optional
     )
 
 
-def _log_end(success: bool, steps: int, rewards: List[float]) -> None:
+def _log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
-    print(f"[END] success={_bool(success)} steps={steps} rewards={rewards_str}", flush=True)
+    print(f"[END] success={_bool(success)} steps={steps} score={score:.2f} rewards={rewards_str}", flush=True)
 
 
 def _parse_findings(review_text: str) -> List[Dict[str, Any]]:
@@ -187,7 +187,10 @@ async def _run_episode(task_id: str) -> None:
             await env.close()
         except Exception:
             pass
-        _log_end(success=success, steps=steps_taken, rewards=rewards)
+        # Score = sum of rewards, strictly clamped to (0.01, 0.99) as required by validator
+        raw_score = sum(rewards) if rewards else 0.0
+        score = max(min(raw_score, 0.99), 0.01)
+        _log_end(success=success, steps=steps_taken, score=score, rewards=rewards)
 
 
 async def main() -> None:
