@@ -73,7 +73,7 @@ tasks:
       - Missing documentation
       - Complex logic that could be simplified
       - Missing type hints
-    max_steps: 10
+    max_steps: 1
     reward_scale: 0.99
     
   - id: bug_logic
@@ -85,7 +85,7 @@ tasks:
       - Missing edge case handling
       - Incorrect algorithms
       - Race conditions
-    max_steps: 10
+    max_steps: 1
     reward_scale: 0.99
     
   - id: full_review
@@ -97,7 +97,7 @@ tasks:
       - Logic bugs
       - Security vulnerabilities
       - Verification that code matches PR description
-    max_steps: 10
+    max_steps: 1
     reward_scale: 0.99
 
 
