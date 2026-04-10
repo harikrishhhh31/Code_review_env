@@ -1,6 +1,5 @@
 import asyncio
 import os
-import json
 from typing import Any, Dict, List, Optional
 
 from openai import OpenAI
@@ -10,33 +9,19 @@ from models import CodeReviewAction
 
 # --- REQUIRED ENV VARS (per hackathon rules) ---
 # Scaler validator injects these. We still provide defaults where required.
-API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4o-mini")
-# Phase 1 relies on API_KEY. Phase 2 prefers HF_TOKEN. Fallback cleanly to pass both.
-API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+# IMPORTANT: Phase 2 expects usage of API_KEY (LiteLLM proxy key), not HF_TOKEN.
+API_KEY = os.getenv("API_KEY")
 
 BENCHMARK = "code_review_env"
 TASKS = ["readability", "bug_logic", "full_review"]
 MAX_STEPS = 5
 
-SYSTEM_PROMPT = """
-You must output STRICT JSON only. Do not use markdown blocks (e.g. ```json).
-No explanations. No extra text.
-
-Return exactly this JSON structure:
-{
-  "bug_identified": true,
-  "bug_location": "string (MUST contain specific line number or exact code pattern; NOT vague)",
-  "bug_type": "off-by-one" | "logic-error" | "insecure-deserialization" | "none",
-  "bug_description": "string (Must explain WHY the bug occurs and mention the actual pattern; not generic)",
-  "severity": "none" | "low" | "medium" | "high" | "critical",
-  "suggested_fix": "string"
-}
-
-CRITICAL RULES:
-1. If bug_identified is false, bug_type and severity MUST be "none", and all other string fields MUST be "".
-2. bug_type and severity MUST strictly correctly be one of the exact allowed values.
-""".strip()
+SYSTEM_PROMPT = (
+    "You are an expert code reviewer. Identify issues and propose fixes. "
+    "Return clear, structured findings."
+)
 
 
 def _bool(v: bool) -> str:
@@ -61,42 +46,6 @@ def _log_end(success: bool, steps: int, rewards: List[float]) -> None:
 
 
 def _parse_findings(review_text: str) -> List[Dict[str, Any]]:
-    # Prefer JSON parsing (prompt requires strict JSON).
-    txt = (review_text or "").strip()
-    if txt.startswith("{") and txt.endswith("}"):
-        try:
-            obj = json.loads(txt)
-            bug_identified = bool(obj.get("bug_identified", False))
-            if not bug_identified:
-                return []
-
-            bug_type = str(obj.get("bug_type", "other")).strip().lower()
-            severity = str(obj.get("severity", "medium")).strip().lower()
-            location = str(obj.get("bug_location", "unspecified")).strip()
-            desc = str(obj.get("bug_description", "")).strip()
-            fix = str(obj.get("suggested_fix", "")).strip()
-
-            mapped_type = "logic"
-            if bug_type == "insecure-deserialization":
-                mapped_type = "security"
-            elif bug_type in ("off-by-one", "logic-error"):
-                mapped_type = "logic"
-
-            mapped_sev = severity if severity in ("low", "medium", "high", "critical") else "medium"
-
-            return [
-                {
-                    "type": mapped_type,
-                    "severity": mapped_sev,
-                    "location": location or "unspecified",
-                    "description": desc or "Bug identified.",
-                    "suggestion": fix,
-                }
-            ]
-        except Exception:
-            # Fall through to heuristic parsing.
-            pass
-
     findings: List[Dict[str, Any]] = []
     current: Optional[Dict[str, Any]] = None
 
@@ -182,29 +131,25 @@ async def _run_episode(task_id: str) -> None:
     steps_taken = 0
     success = False
     last_action_error: Optional[str] = None
-    env = None
+
+    env = CodeReviewEnvFactory.from_docker_image("local")
 
     try:
-        env = CodeReviewEnvFactory.from_docker_image("local")
-
         if API_KEY is None or API_KEY == "":
-            raise ValueError("API_KEY or HF_TOKEN environment variable is required")
+            raise ValueError("API_KEY environment variable is required")
 
+        # Must use the injected LiteLLM proxy base_url + api_key.
         openai_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
         # Phase 2 validator checks for *any* proxy traffic. Do a minimal call up front
         # to ensure the injected proxy sees activity even if the episode ends early.
         # (No stdout printed; failures fall through to END as usual.)
-        try:
-            _ = openai_client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[{"role": "user", "content": "ping"}],
-                max_tokens=1,
-                temperature=0,
-            )
-        except Exception as exc:
-            # Do not fail the episode before at least one env.step().
-            last_action_error = str(exc)
+        _ = openai_client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[{"role": "user", "content": "ping"}],
+            max_tokens=1,
+            temperature=0,
+        )
 
         result = await env.reset(task_id=task_id)
         pr_info: Dict[str, Any] = getattr(result.observation, "pr_info", {}) or {}
@@ -212,14 +157,8 @@ async def _run_episode(task_id: str) -> None:
         for step in range(1, MAX_STEPS + 1):
             steps_taken = step
 
-            try:
-                review_text = _llm_review(openai_client, task_id, pr_info)
-                findings = _parse_findings(review_text)
-            except Exception as exc:
-                # Still take an environment step so the validator sees a score.
-                last_action_error = str(exc)
-                review_text = "Proxy call failed; submitting empty findings."
-                findings = []
+            review_text = _llm_review(openai_client, task_id, pr_info)
+            findings = _parse_findings(review_text)
 
             action = CodeReviewAction(
                 review_text=review_text,
@@ -229,9 +168,7 @@ async def _run_episode(task_id: str) -> None:
             )
 
             result = await env.step(action)
-            reward = float(result.reward or 0.01)
-            # Strictly enforce OpenEnv bounds before appending to the score list
-            reward = max(min(reward, 0.99), 0.01)
+            reward = float(result.reward or 0.0)
             done = bool(result.done)
 
             rewards.append(reward)
@@ -246,11 +183,10 @@ async def _run_episode(task_id: str) -> None:
         last_action_error = str(exc)
         success = False
     finally:
-        if env:
-            try:
-                await env.close()
-            except Exception:
-                pass
+        try:
+            await env.close()
+        except Exception:
+            pass
         _log_end(success=success, steps=steps_taken, rewards=rewards)
 
 

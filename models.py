@@ -37,8 +37,8 @@ class CodeReviewAction(Action):
     
                                                                     
     confidence: float = Field(
-        default=0.01,
-        ge=0.01,                  
+        default=0.5,
+        ge=0.0,                  
         le=1.0,                  
         description="Agent's confidence in this review (0.0 to 1.0)"
     )
@@ -98,7 +98,7 @@ class CodeReviewObservation(Observation):
                                                            
                                                    
     reward: float = Field(
-        default=0.01,
+        default=0.0,
         description="""Reward signal for this step (can be positive or negative).
         
         RL LEARNING: How rewards work:
@@ -113,7 +113,7 @@ class CodeReviewObservation(Observation):
     
                                                   
     cumulative_score: float = Field(
-        default=0.01,
+        default=0.0,
         description="Running total of all rewards in this episode"
     )
     
@@ -184,7 +184,7 @@ class CodeReviewState(State):
     
                           
     total_reward: float = Field(
-        default=0.01,
+        default=0.0,
         description="Cumulative reward for this episode"
     )
     

@@ -74,7 +74,7 @@ tasks:
       - Complex logic that could be simplified
       - Missing type hints
     max_steps: 10
-    reward_scale: 0.99
+    reward_scale: 1.0
     
   - id: bug_logic
     name: "Bug & Logic Review"
@@ -86,7 +86,7 @@ tasks:
       - Incorrect algorithms
       - Race conditions
     max_steps: 10
-    reward_scale: 0.99
+    reward_scale: 1.0
     
   - id: full_review
     name: "Full Pull Request Review"
@@ -98,7 +98,7 @@ tasks:
       - Security vulnerabilities
       - Verification that code matches PR description
     max_steps: 10
-    reward_scale: 0.99
+    reward_scale: 1.0
 
 
 runtime:
