@@ -10,28 +10,32 @@ from models import CodeReviewAction
 
 # --- REQUIRED ENV VARS (per hackathon rules) ---
 # Scaler validator injects these. We still provide defaults where required.
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-# IMPORTANT: Phase 2 expects usage of API_KEY (LiteLLM proxy key), not HF_TOKEN.
-API_KEY = os.getenv("API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+# Phase 1 relies on API_KEY. Phase 2 prefers HF_TOKEN. Fallback cleanly to pass both.
+API_KEY = os.getenv("HF_TOKEN") or os.getenv("API_KEY")
 
 BENCHMARK = "code_review_env"
 TASKS = ["readability", "bug_logic", "full_review"]
 MAX_STEPS = 5
 
 SYSTEM_PROMPT = """
-You must output STRICT JSON only.
+You must output STRICT JSON only. Do not use markdown blocks (e.g. ```json).
+No explanations. No extra text.
 
-No explanations.
-No extra text.
+Return exactly this JSON structure:
+{
+  "bug_identified": true,
+  "bug_location": "string (MUST contain specific line number or exact code pattern; NOT vague)",
+  "bug_type": "off-by-one" | "logic-error" | "insecure-deserialization" | "none",
+  "bug_description": "string (Must explain WHY the bug occurs and mention the actual pattern; not generic)",
+  "severity": "none" | "low" | "medium" | "high" | "critical",
+  "suggested_fix": "string"
+}
 
-Follow exact schema:
-bug_identified (bool)
-bug_location (string)
-bug_type (off-by-one | logic-error | insecure-deserialization | none)
-bug_description (string)
-severity (none | low | medium | high | critical)
-suggested_fix (string)
+CRITICAL RULES:
+1. If bug_identified is false, bug_type and severity MUST be "none", and all other string fields MUST be "".
+2. bug_type and severity MUST strictly correctly be one of the exact allowed values.
 """.strip()
 
 
@@ -178,14 +182,14 @@ async def _run_episode(task_id: str) -> None:
     steps_taken = 0
     success = False
     last_action_error: Optional[str] = None
-
-    env = CodeReviewEnvFactory.from_docker_image("local")
+    env = None
 
     try:
-        if API_KEY is None or API_KEY == "":
-            raise ValueError("API_KEY environment variable is required")
+        env = CodeReviewEnvFactory.from_docker_image("local")
 
-        # Must use the injected LiteLLM proxy base_url + api_key.
+        if API_KEY is None or API_KEY == "":
+            raise ValueError("API_KEY or HF_TOKEN environment variable is required")
+
         openai_client = OpenAI(base_url=API_BASE_URL, api_key=API_KEY)
 
         # Phase 2 validator checks for *any* proxy traffic. Do a minimal call up front
@@ -240,10 +244,11 @@ async def _run_episode(task_id: str) -> None:
         last_action_error = str(exc)
         success = False
     finally:
-        try:
-            await env.close()
-        except Exception:
-            pass
+        if env:
+            try:
+                await env.close()
+            except Exception:
+                pass
         _log_end(success=success, steps=steps_taken, rewards=rewards)
 
 

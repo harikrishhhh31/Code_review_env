@@ -52,8 +52,9 @@ class CorrectnessRubric(Rubric):
         
                                                                         
         if not agent_findings:
-            self.last_score = 0.0
-            return _strict_unit_interval(0.0 * self.weight)
+            score = _strict_unit_interval(0.0 * self.weight)
+            self.last_score = score
+            return score
         
                                                  
         correct_count = 0
@@ -68,8 +69,9 @@ class CorrectnessRubric(Rubric):
         precision = correct_count / len(agent_findings) if agent_findings else 0.0
         
                                  
-        self.last_score = precision
-        return _strict_unit_interval(precision * self.weight)
+        score = _strict_unit_interval(precision * self.weight)
+        self.last_score = score
+        return score
     
     def _findings_match(
         self, 
@@ -113,8 +115,9 @@ class CompletenessRubric(Rubric):
         )
         
         if not ground_truth:
-            self.last_score = 1.0
-            return _strict_unit_interval(1.0 * self.weight)                                
+            score = _strict_unit_interval(1.0 * self.weight)
+            self.last_score = score
+            return score                                
         
                                                        
         found_count = 0
@@ -126,8 +129,9 @@ class CompletenessRubric(Rubric):
         
                           
         recall = found_count / len(ground_truth)
-        self.last_score = recall
-        return _strict_unit_interval(recall * self.weight)
+        score = _strict_unit_interval(recall * self.weight)
+        self.last_score = score
+        return score
     
     def _issue_found(
         self, 
@@ -167,8 +171,9 @@ class SeverityRubric(Rubric):
         agent_findings = getattr(action, 'findings', [])
         
         if not agent_findings:
-            self.last_score = 0.0
-            return _strict_unit_interval(0.0 * self.weight)
+            score = _strict_unit_interval(0.0 * self.weight)
+            self.last_score = score
+            return score
         
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
@@ -200,12 +205,14 @@ class SeverityRubric(Rubric):
                     break
         
         if total_severity_issues == 0:
-            self.last_score = 1.0
-            return _strict_unit_interval(1.0 * self.weight)                              
+            score = _strict_unit_interval(1.0 * self.weight)
+            self.last_score = score
+            return score                              
         
-        score = correct_severity / total_severity_issues
+        computed_score = correct_severity / total_severity_issues
+        score = _strict_unit_interval(computed_score * self.weight)
         self.last_score = score
-        return _strict_unit_interval(score * self.weight)
+        return score
 
 
 class DescriptionMatchRubric(Rubric):
@@ -223,9 +230,10 @@ class DescriptionMatchRubric(Rubric):
                                                                            
         agent_assessment_correct = True               
         
-        score = 1.0 if agent_assessment_correct else 0.0
+        computed_score = 1.0 if agent_assessment_correct else 0.0
+        score = _strict_unit_interval(computed_score * self.weight)
         self.last_score = score
-        return _strict_unit_interval(score * self.weight)
+        return score
 
 
                                                                                
@@ -248,7 +256,9 @@ class ReadabilityRubric(Rubric):
                               
         total = c_score + comp_score
         
-        return _strict_unit_interval(min(total, 1.0))              
+        score = _strict_unit_interval(min(total, 1.0))
+        self.last_score = score
+        return score              
 
 
 class BugLogicRubric(Rubric):
@@ -266,7 +276,9 @@ class BugLogicRubric(Rubric):
         
         total = c_score + comp_score + sev_score
         
-        return _strict_unit_interval(min(total, 1.0))
+        score = _strict_unit_interval(min(total, 1.0))
+        self.last_score = score
+        return score
 
 
 class FullReviewRubric(Rubric):
@@ -289,7 +301,9 @@ class FullReviewRubric(Rubric):
             desc_score * 0.40                                     
         )
         
-        return _strict_unit_interval(min(total, 1.0))
+        score = _strict_unit_interval(min(total, 1.0))
+        self.last_score = score
+        return score
 
 
                                                                                
