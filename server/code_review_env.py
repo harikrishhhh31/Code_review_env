@@ -281,8 +281,9 @@ Please review this code and provide your findings.""",
     
     def _check_episode_done(self) -> bool:
                          
-        if self._state.step_count >= 1:
+        if self._state.step_count >= self._state.max_steps:
             return True
+        
         return False
     
     def _compute_score_breakdown(
