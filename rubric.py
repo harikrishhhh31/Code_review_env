@@ -24,7 +24,7 @@ class CorrectnessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0                             
+        self.last_score = 0.01                             
     
     def forward(self, action, observation) -> float:
                               
@@ -37,7 +37,7 @@ class CorrectnessRubric(Rubric):
         
                                                                         
         if not agent_findings:
-            return 0.0                           
+            return 0.01                           
         
                                                  
         correct_count = 0
@@ -54,7 +54,7 @@ class CorrectnessRubric(Rubric):
                                  
         self.last_score = precision
         
-        return precision * self.weight
+        return max(min(precision * self.weight, 0.99), 0.01)
     
     def _findings_match(
         self, 
@@ -89,7 +89,7 @@ class CompletenessRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = 0.01
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
@@ -98,7 +98,7 @@ class CompletenessRubric(Rubric):
         )
         
         if not ground_truth:
-            return 1.0                                  
+            return 0.99                                  
         
                                                        
         found_count = 0
@@ -112,7 +112,7 @@ class CompletenessRubric(Rubric):
         recall = found_count / len(ground_truth)
         self.last_score = recall
         
-        return recall * self.weight
+        return max(min(recall * self.weight, 0.99), 0.01)
     
     def _issue_found(
         self, 
@@ -146,13 +146,13 @@ class SeverityRubric(Rubric):
     def __init__(self, weight: float = 0.5):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = 0.01
     
     def forward(self, action, observation) -> float:
         agent_findings = getattr(action, 'findings', [])
         
         if not agent_findings:
-            return 0.0
+            return 0.01
         
         ground_truth = getattr(observation, 'metadata', {}).get(
             'ground_truth_issues', []
@@ -184,12 +184,12 @@ class SeverityRubric(Rubric):
                     break
         
         if total_severity_issues == 0:
-            return 1.0                                
+            return 0.99                                
         
         score = correct_severity / total_severity_issues
         self.last_score = score
         
-        return score * self.weight
+        return max(min(score * self.weight, 0.99), 0.01)
 
 
 class DescriptionMatchRubric(Rubric):
@@ -197,7 +197,7 @@ class DescriptionMatchRubric(Rubric):
     def __init__(self, weight: float = 1.0):
         super().__init__()
         self.weight = weight
-        self.last_score = 0.0
+        self.last_score = 0.01
     
     def forward(self, action, observation) -> float:
         pr_info = getattr(observation, 'pr_info', {})
@@ -207,10 +207,11 @@ class DescriptionMatchRubric(Rubric):
                                                                            
         agent_assessment_correct = True               
         
-        score = 1.0 if agent_assessment_correct else 0.0
+        computed_score = 0.99 if agent_assessment_correct else 0.01
+        score = max(min(computed_score * self.weight, 0.99), 0.01)
         self.last_score = score
         
-        return score * self.weight
+        return score
 
 
                                                                                
@@ -222,7 +223,7 @@ class ReadabilityRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-                                                                 
+        self.last_score = 0.01
         self.correctness = CorrectnessRubric(weight=0.5)
         self.completeness = CompletenessRubric(weight=0.5)
     
@@ -233,14 +234,16 @@ class ReadabilityRubric(Rubric):
                               
         total = c_score + comp_score
         
-        return min(total, 1.0)              
+        score = max(min(total, 0.99), 0.01)
+        self.last_score = score
+        return score
 
 
 class BugLogicRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-        self.correctness = CorrectnessRubric(weight=0.4)
+        self.last_score = 0.01
         self.completeness = CompletenessRubric(weight=0.4)
         self.severity = SeverityRubric(weight=0.2)
     
@@ -251,14 +254,16 @@ class BugLogicRubric(Rubric):
         
         total = c_score + comp_score + sev_score
         
-        return min(total, 1.0)
+        score = max(min(total, 0.99), 0.01)
+        self.last_score = score
+        return score
 
 
 class FullReviewRubric(Rubric):
     
     def __init__(self):
         super().__init__()
-        self.readability = ReadabilityRubric()
+        self.last_score = 0.01
         self.bug_logic = BugLogicRubric()
         self.description_match = DescriptionMatchRubric(weight=0.2)
     
@@ -274,7 +279,9 @@ class FullReviewRubric(Rubric):
             desc_score * 0.40                                     
         )
         
-        return min(total, 1.0)
+        score = max(min(total, 0.99), 0.01)
+        self.last_score = score
+        return score
 
 
                                                                                
@@ -315,3 +322,6 @@ __all__ = [
              
     "RubricFactory",
 ]
+
+
+

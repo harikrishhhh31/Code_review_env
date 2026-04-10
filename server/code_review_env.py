@@ -106,7 +106,7 @@ class CodeReviewEnvironment(Environment):
         self._state.episode_id = new_episode_id
         self._state.step_count = 0
         self._state.task_index = task_index or 0
-        self._state.total_reward = 0.0
+        self._state.total_reward = 0.01
         self._state.agent_findings_history = []
         issues = list(self._current_task["ground_truth_issues"])
         rng = random.Random(seed or uuid.uuid4().int)
@@ -144,14 +144,20 @@ Code to Review:
 
 Please review this code and provide your findings.""",
             score_breakdown={
-                "readability": 0.0,
-                "logic": 0.0,
-                "security": 0.0,
-                "description_match": 0.0
+                "readability": 0.01,
+                "logic": 0.01,
+                "security": 0.01,
+                "description_match": 0.01,
+                "readability_score": 0.01,
+                "logic_score": 0.01,
+                "security_score": 0.01,
+                "description_match_score": 0.01,
+                "bug_logic": 0.01,
+                "full_review": 0.01,
             },
             findings_graded=[],
-            reward=0.0,                       
-            cumulative_score=0.0,
+            reward=0.01,                       
+            cumulative_score=0.01,
             done=False,
             metadata={
                 "task_id": self._state.task_id,
@@ -181,7 +187,7 @@ Please review this code and provide your findings.""",
             self._state.task_id = snapshot.get("task_id", self._state.task_id)
             self._state.task_index = snapshot.get("task_index", 0)
             self._state.step_count = snapshot.get("step_count", 0)
-            self._state.total_reward = snapshot.get("total_reward", 0.0)
+            self._state.total_reward = snapshot.get("total_reward", 0.01)
             self._state.ground_truth_issues = self._current_task["ground_truth_issues"]
             self._state.current_pr = self._current_task["pr_info"]
 
@@ -208,7 +214,12 @@ Please review this code and provide your findings.""",
         findings_graded = self._grade_findings(sanitized_action)
         penalty_false_positives = self._false_positive_penalty(findings_graded)
         reward = reward + penalty_overflow + penalty_false_positives
-        reward = max(min(reward, 1.0), -1.0)
+        
+        # RL episodic sum protection: 
+        # The sum across max_steps cannot exceed 1.0. We clamp to 0.99, then divide 
+        # by max_steps to guarantee the episode sum NEVER violates (0, 1) bounds.
+        clamped_target = max(min(reward, 0.99), 0.01)
+        reward = clamped_target / self._state.max_steps
 
         self._step_rewards.append(reward)
         self._state.total_reward += reward
@@ -301,18 +312,34 @@ Please review this code and provide your findings.""",
             gt_by_type[itype] = gt_by_type.get(itype, 0) + 1
         
                                            
-        breakdown = {}
+        breakdown: Dict[str, float] = {
+            "readability": 0.01,
+            "logic": 0.01,
+            "security": 0.01,
+            "description_match": 0.01,
+            "readability_score": 0.01,
+            "logic_score": 0.01,
+            "security_score": 0.01,
+            "description_match_score": 0.01,
+            "bug_logic": 0.01,
+            "full_review": 0.01,
+        }
+        breakdown[self._state.task_id] = 0.01
         for itype in set(list(found_by_type.keys()) + list(gt_by_type.keys())):
             found = found_by_type.get(itype, 0)
             expected = gt_by_type.get(itype, 0)
             
             if found == 0:
-                breakdown[itype] = 0.0
+                raw = 0.01
             elif expected == 0:
-                breakdown[itype] = 0.5                                           
+                raw = 0.5                                           
             else:
                                                                   
-                breakdown[itype] = min(found / expected, 1.0)
+                raw = min(found / expected, 0.99)
+                if raw < 0.01:
+                    raw = 0.01
+            breakdown[itype] = raw
+            breakdown[f"{itype}_score"] = raw
         
         return breakdown
     
