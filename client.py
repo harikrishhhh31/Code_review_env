@@ -27,14 +27,14 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
             feedback=obs_data.get("feedback", ""),
             score_breakdown=obs_data.get("score_breakdown", {}),
             findings_graded=obs_data.get("findings_graded", []),
-            reward=obs_data.get("reward", 0.0),
-            cumulative_score=obs_data.get("cumulative_score", 0.0),
+            reward=obs_data.get("reward", 0.01),
+            cumulative_score=obs_data.get("cumulative_score", 0.01),
             done=obs_data.get("done", False),
             metadata=obs_data.get("metadata", {}),
         )
         
                           
-        reward = obs_data.get("reward", 0.0)
+        reward = obs_data.get("reward", 0.01)
         done = obs_data.get("done", False)
         
         return StepResult(
@@ -49,7 +49,7 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
             step_count=payload.get("step_count", 0),
             task_id=payload.get("task_id", "readability"),
             task_index=payload.get("task_index", 0),
-            total_reward=payload.get("total_reward", 0.0),
+            total_reward=payload.get("total_reward", 0.01),
         )
     
                                                                                
@@ -93,3 +93,4 @@ __all__ = [
     "CodeReviewEnv",
     "CodeReviewEnvFactory",
 ]
+
