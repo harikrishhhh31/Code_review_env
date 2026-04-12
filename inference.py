@@ -105,20 +105,10 @@ def get_model_message(client: OpenAI, task_id: str, pr: Dict[str, Any]) -> str:
     code = pr.get("code", "")
 
     user_prompt = (
-        "Review this Pull Request.
-
-"
-        f"Title: {title}
-"
-        f"Description: {desc}
-
-"
-        f"Code (language: {lang}):
-```{lang}
-{code}
-```
-
-"
+        "Review this Pull Request.\n\n"
+        f"Title: {title}\n"
+        f"Description: {desc}\n\n"
+        f"Code (language: {lang}):\n```{lang}\n{code}\n```\n\n"
         f"Please {focus}. Provide findings."
     )
 
