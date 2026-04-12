@@ -75,9 +75,9 @@ class CodeReviewEnvFactory:
     
     @staticmethod
     def from_docker_image(image_name: str) -> CodeReviewEnv:
-                                                     
-                                        
-        return CodeReviewEnv(base_url="http://localhost:8000")
+        import os
+        port = os.environ.get("PORT", "7860")
+        return CodeReviewEnv(base_url=f"http://localhost:{port}")
     
     @staticmethod
     def from_hub(repo_id: str) -> CodeReviewEnv:
