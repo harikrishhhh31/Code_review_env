@@ -239,7 +239,7 @@ Please review this code and provide your findings.""",
             score_breakdown=score_breakdown,
             findings_graded=findings_graded,
             reward=reward,                                
-            cumulative_score=self._state.total_reward,                
+            cumulative_score=min(max(self._state.total_reward, 0.01), 0.99),
             done=is_done,
             metadata={
                 "step": self._state.step_count,
