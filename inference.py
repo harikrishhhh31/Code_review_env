@@ -146,13 +146,18 @@ def run_task(client: OpenAI, task_id: str) -> None:
                     review_category=task_id,
                 )
                 result = env.step(action)
-                reward = float(result.reward or 0.0)
+                # Ensure the reward fallback is 0.01, not 0.0
+                reward = float(result.reward or 0.01)
+                reward = max(min(reward, 0.99), 0.01)
                 done = bool(result.done)
                 rewards.append(reward)
                 log_step(step=step, action="submit_review", reward=reward, done=done, error=None)
             except Exception as e:
                 error = str(e)
-                log_step(step=step, action="submit_review", reward=0.0, done=True, error=error)
+                # Emit 0.01 instead of 0.0 on error to respect the strict (0,1) boundary
+                reward_on_err = 0.01
+                rewards.append(reward_on_err)
+                log_step(step=step, action="submit_review", reward=reward_on_err, done=True, error=error)
                 break
                 
             if done:
