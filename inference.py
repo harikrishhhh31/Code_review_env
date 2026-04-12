@@ -131,7 +131,7 @@ async def run_task(client: AsyncOpenAI, task_id: str) -> None:
     success = False
     error: Optional[str] = None
 
-    env = CodeReviewEnvFactory.from_docker_image("local")
+    env = await CodeReviewEnvFactory.from_docker_image("local")
 
     try:
         result = await env.reset(task_id=task_id)

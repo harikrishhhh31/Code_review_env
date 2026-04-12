@@ -74,10 +74,12 @@ class CodeReviewEnv(EnvClient[CodeReviewAction, CodeReviewObservation, CodeRevie
 class CodeReviewEnvFactory:
     
     @staticmethod
-    def from_docker_image(image_name: str) -> CodeReviewEnv:
+    async def from_docker_image(image_name: str) -> CodeReviewEnv:
         import os
         port = os.environ.get("PORT", "7860")
-        return CodeReviewEnv(base_url=f"http://localhost:{port}")
+        env = CodeReviewEnv(base_url=f"http://localhost:{port}")
+        await env.connect()
+        return env
     
     @staticmethod
     def from_hub(repo_id: str) -> CodeReviewEnv:
