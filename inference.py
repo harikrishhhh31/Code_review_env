@@ -16,7 +16,7 @@ if API_KEY is None:
 
 BENCHMARK = "code_review_env"
 TASKS = ["readability", "bug_logic", "full_review"]
-MAX_STEPS = 3
+MAX_STEPS = 1
 
 SYSTEM_PROMPT = (
     "You are an expert code reviewer. Identify readability, logic, and security issues. "
