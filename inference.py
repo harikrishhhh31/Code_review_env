@@ -1,18 +1,17 @@
 import os
-import asyncio
 from typing import List, Optional, Dict, Any
 
-from openai import AsyncOpenAI
+from openai import OpenAI
 
 from client import CodeReviewEnvFactory
 from models import CodeReviewAction
 
-API_BASE_URL = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
-API_KEY = os.getenv("API_KEY")
+API_BASE_URL = os.getenv("API_BASE_URL", "https://api.openai.com/v1")
+MODEL_NAME = os.getenv("MODEL_NAME", "gpt-4.1-mini")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-if API_KEY is None:
-    raise ValueError("API_KEY environment variable is required")
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
 
 BENCHMARK = "code_review_env"
 TASKS = ["readability", "bug_logic", "full_review"]
@@ -23,10 +22,8 @@ SYSTEM_PROMPT = (
     "Return findings with type, severity, location, description, and suggestion."
 )
 
-
 def log_start(task: str, env: str, model: str) -> None:
     print(f"[START] task={task} env={env} model={model}", flush=True)
-
 
 def log_step(step: int, action: str, reward: float, done: bool, error: Optional[str]) -> None:
     err = error if error else "null"
@@ -36,14 +33,12 @@ def log_step(step: int, action: str, reward: float, done: bool, error: Optional[
         flush=True,
     )
 
-
 def log_end(success: bool, steps: int, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
         flush=True,
     )
-
 
 def parse_findings(review_text: str) -> List[Dict[str, Any]]:
     findings: List[Dict[str, Any]] = []
@@ -89,8 +84,7 @@ def parse_findings(review_text: str) -> List[Dict[str, Any]]:
 
     return findings[:7]
 
-
-async def get_model_message(client: AsyncOpenAI, task_id: str, pr: Dict[str, Any]) -> str:
+def get_model_message(client: OpenAI, task_id: str, pr: Dict[str, Any]) -> str:
     focus = "review for issues"
     if task_id == "readability":
         focus = "focus on readability and style issues"
@@ -112,7 +106,7 @@ async def get_model_message(client: AsyncOpenAI, task_id: str, pr: Dict[str, Any
         f"Please {focus}. Provide findings."
     )
 
-    completion = await client.chat.completions.create(
+    completion = client.chat.completions.create(
         model=MODEL_NAME,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -123,38 +117,44 @@ async def get_model_message(client: AsyncOpenAI, task_id: str, pr: Dict[str, Any
     )
     return (completion.choices[0].message.content or "").strip()
 
-
-async def run_task(client: AsyncOpenAI, task_id: str) -> None:
+def run_task(client: OpenAI, task_id: str) -> None:
     log_start(task=task_id, env=BENCHMARK, model=MODEL_NAME)
     rewards: List[float] = []
     steps_taken = 0
     success = False
     error: Optional[str] = None
 
-    env = await CodeReviewEnvFactory.from_docker_image("local")
+    env = CodeReviewEnvFactory.from_docker_image("local")
 
     try:
-        result = await env.reset(task_id=task_id)
+        result = env.reset(task_id=task_id)
         pr_info: Dict[str, Any] = getattr(result.observation, "pr_info", {}) or {}
 
         for step in range(1, MAX_STEPS + 1):
             steps_taken = step
             if result.done:
                 break
-
-            review_text = await get_model_message(client, task_id, pr_info)
-            findings = parse_findings(review_text)
-            action = CodeReviewAction(
-                review_text=review_text,
-                findings=findings,
-                confidence=0.8,
-                review_category=task_id,
-            )
-            result = await env.step(action)
-            reward = float(result.reward or 0.0)
-            done = bool(result.done)
-            rewards.append(reward)
-            log_step(step=step, action="submit_review", reward=reward, done=done, error=error)
+            
+            error = None
+            try:
+                review_text = get_model_message(client, task_id, pr_info)
+                findings = parse_findings(review_text)
+                action = CodeReviewAction(
+                    review_text=review_text,
+                    findings=findings,
+                    confidence=0.8,
+                    review_category=task_id,
+                )
+                result = env.step(action)
+                reward = float(result.reward or 0.0)
+                done = bool(result.done)
+                rewards.append(reward)
+                log_step(step=step, action="submit_review", reward=reward, done=done, error=None)
+            except Exception as e:
+                error = str(e)
+                log_step(step=step, action="submit_review", reward=0.0, done=True, error=error)
+                break
+                
             if done:
                 break
 
@@ -165,32 +165,31 @@ async def run_task(client: AsyncOpenAI, task_id: str) -> None:
         print(f"[ERROR] Exception during task {task_id}: {error}", flush=True)
     finally:
         try:
-            await env.close()
+            env.close()
         except Exception:
             pass
         log_end(success=success, steps=steps_taken, rewards=rewards)
 
 
-async def main() -> None:
-    client = AsyncOpenAI(base_url=API_BASE_URL, api_key=API_KEY)
+def main() -> None:
+    client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
     
-    # Initial ping call to proxy
+    # Optional ping to wake up proxy
     try:
-        await client.chat.completions.create(
+        client.chat.completions.create(
             model=MODEL_NAME,
             messages=[{"role": "user", "content": "ping"}],
             max_tokens=1
         )
     except Exception as exc:
-        print(f"[WARNING] Initial ping failed: {exc}")
+        print(f"[WARNING] Initial ping failed: {exc}", flush=True)
 
     target_task = os.getenv("TASK_NAME")
     if target_task and target_task in TASKS:
-        await run_task(client, target_task)
+        run_task(client, target_task)
     else:
         for task_id in TASKS:
-            await run_task(client, task_id)
-
+            run_task(client, task_id)
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
